@@ -1,5 +1,47 @@
 # CLAUDE.md — Reglas innegociables del proyecto
 
+---
+
+## LA VISIÓN, EN CRISTIANO
+
+Lee esto primero. Si alguna vez una decisión técnica choca con este párrafo,
+gana el párrafo.
+
+> Unos bichos que no saben nada. Nacen sin conocer nada del mundo. Y con el
+> tiempo descubren el fuego, y le ponen un nombre al fuego. Le ponen un nombre
+> a los peligros. Descubren cómo juntarse para cazar. Eso es el juego.
+
+Nada de eso está programado. Todo eso **tiene que poder pasar y puede no pasar
+nunca**. Mi trabajo no es hacer que pase: es construir un mundo donde sea
+posible, y no tocarlo cuando pasa.
+
+Lo que eso significa en la práctica, punto por punto:
+
+- **"No saben nada"** → nacen con el cerebro torpe y aprenden en vida, copiando
+  a otros y equivocándose. Los errores se heredan igual que los aciertos.
+- **"Descubren el fuego"** → el fuego **existe como física desde el primer
+  día**: es una reacción química que suelta mucho calor y se propaga. Quema
+  plantas, quema bichos, calienta cuando hace frío. No es una tecnología que se
+  desbloquea. Si un linaje aprende a acercarse cuando tiene frío, o a llevarlo,
+  o a evitarlo, eso lo descubrieron ellos.
+- **"Le ponen un nombre"** → emiten un vector de cuatro números. Con el uso,
+  esos vectores se agrupan en nubes. Una nube estable **es** una palabra. Nadie
+  la escribió y nadie decidió qué significa: significa aquello con lo que
+  aparece.
+- **"Nombre a los peligros"** → esto es el corazón. Tiene que haber peligro que
+  llegue desde donde no lo ves, para que el que lo vio primero pueda avisar. Sin
+  información asimétrica no hay nada que decir y el canal se queda mudo para
+  siempre.
+- **"Juntarse para cazar"** → tiene que haber comida que **un bicho solo no
+  pueda derribar**. Si uno solo se las arregla, nadie se junta nunca. La caza en
+  grupo no se programa: se hace necesaria.
+
+**El proyecto vale por una sola cosa: que lo que pase ahí dentro no lo haya
+escrito nadie.** Un resultado nulo honesto vale más que uno falso. Si algo no
+emerge, se dice y se propone qué parámetro tocar; no se escribe a mano.
+
+---
+
 Este archivo se lee en cada sesión. Las reglas de abajo no se negocian, no se
 suspenden "solo por esta vez" y no se relajan para que una fase pase su
 criterio de aceptación. Si una regla impide que algo funcione, el resultado
