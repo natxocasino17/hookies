@@ -121,6 +121,26 @@ export interface EstadoMundo {
   plantasVivas: number;
   masaVegetal: number;
 
+  /**
+   * Memoria de trabajo del arrastre por el viento.
+   *
+   * El viento tiene que leer el estado de ANTES para que el aire que llega a una
+   * celda no vuelva a salir en el mismo tick — si no, correría a velocidades
+   * distintas según el orden en que se recorren las celdas. Eso pide una copia,
+   * y estos dos buffers se reaprovechan en vez de pedir memoria nueva.
+   *
+   * Honestidad sobre esto: se hizo pensando que las copias por tick eran las
+   * culpables de que el clima costara casi un milisegundo, y **medido, no
+   * cambió nada** (1,544 ms antes, 1,544 ms después). El coste está en saltar
+   * por la tabla de vecinos de la esfera, que es memoria desordenada. Se deja
+   * porque sigue siendo lo correcto para millones de ticks, pero no es una
+   * optimización: no aceleró nada.
+   *
+   * No se guardan en el archivo: son andamio de trabajo.
+   */
+  copiaEnteros: Int32Array;
+  copiaDecimales: Float32Array;
+
   /** Contabilidad de energía: cuánta entró (sol) y cuánta salió (disipación). */
   energiaEntrada: number;
   energiaSalida: number;
@@ -180,6 +200,8 @@ export function crearEstado(
     cursorPlanta: 0,
     plantasVivas: 0,
     masaVegetal: 0,
+    copiaEnteros: new Int32Array(geo.nCeldas),
+    copiaDecimales: new Float32Array(geo.nCeldas),
     energiaEntrada: 0,
     energiaSalida: 0,
   };
@@ -351,6 +373,8 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     cursorPlanta: vista.getUint32(60, true),
     plantasVivas: vivas,
     masaVegetal,
+    copiaEnteros: new Int32Array(n),
+    copiaDecimales: new Float32Array(n),
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),
   };

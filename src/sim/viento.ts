@@ -95,15 +95,20 @@ export function calcularViento(estado: EstadoMundo, geo: Geometria): void {
  * así que lo que sale de una entra en otra exactamente y el agua del planeta
  * sigue sin cambiar.
  */
+/** Reparto entre vecinas, reaprovechado para no pedir memoria en cada tick. */
+const repartoDeTrabajo = new Float64Array(MAX_VECINOS);
+
 export function arrastrarHumedad(estado: EstadoMundo, geo: Geometria): void {
   const { humedadAire, viento } = estado;
   const { centro, vecinos, nVecinos, nCeldas } = geo;
 
   // Se lee de una copia para que el aire que llega a una celda no vuelva a
   // salir en el mismo tick: si no, el viento correría a velocidades distintas
-  // según el orden en que se recorren las celdas.
-  const antes = new Int32Array(humedadAire);
-  const reparto = new Float64Array(MAX_VECINOS);
+  // según el orden en que se recorren las celdas. El buffer se reaprovecha en
+  // vez de pedir memoria nueva cada tick.
+  const antes = estado.copiaEnteros;
+  antes.set(humedadAire);
+  const reparto = repartoDeTrabajo;
 
   for (let i = 0; i < nCeldas; i++) {
     const carga = antes[i]!;
@@ -146,7 +151,8 @@ export function arrastrarHumedad(estado: EstadoMundo, geo: Geometria): void {
 export function arrastrarCalor(estado: EstadoMundo, geo: Geometria): void {
   const { temperatura, viento } = estado;
   const { centro, vecinos, nVecinos, nCeldas } = geo;
-  const antes = new Float32Array(temperatura);
+  const antes = estado.copiaDecimales;
+  antes.set(temperatura);
 
   for (let i = 0; i < nCeldas; i++) {
     const vx = viento[i * 3]!;

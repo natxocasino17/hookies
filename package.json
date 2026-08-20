@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lab": "tsx src/lab/run.ts"
+    "lab": "tsx src/lab/run.ts",
+    "test:rapido": "vitest run --exclude '**/lentos/**' --exclude '**/node_modules/**'"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

@@ -124,11 +124,31 @@ criaturas son 13,4 M, entre 27 y 67 ms: **por sí solos ya se pasan del
 presupuesto**. Con 500 criaturas quedan en 7–17 ms, justo en el límite, y sin
 dejar nada para la química.
 
-**Medido en la fase 0** (laboratorio, 100.000 ticks, tres semillas): el tick de
-la fase 0 —solo difusión de materia sobre 64×64— cuesta **0,037 ms**, o sea
-unos 27.000 ticks por segundo. Es el suelo del presupuesto, con el mundo aún
-vacío: sirve como referencia para medir cuánto se come cada capa que se agregue
-encima, no como prueba de que la química vaya a entrar.
+**Medido, capa a capa** (laboratorio, planeta de 2.562 celdas salvo la primera):
+
+| Qué hay en el mundo | ms por tick |
+|---|---|
+| Solo difusión de materia, rejilla plana 64×64 | 0,037 |
+| Lo mismo sobre la esfera | 0,066 |
+| Con clima, agua y viento | 1,00 |
+| Con casi 8.000 plantas encima | 1,55 |
+
+Dos cosas que dice esta tabla. Una: pasar a la esfera costó **casi el doble** por
+el acceso desordenado a la tabla de vecinos, exactamente el riesgo que se
+anticipó aquí. Dos: **lo caro es el clima, no la vida** — las 8.000 plantas
+suman 0,25 ms y el clima solo 0,95. Se intentó quitar las copias por tick
+creyendo que eran la culpable y no cambió nada: el coste está en saltar por la
+memoria, no en pedirla.
+
+A 1,55 ms queda margen de diez veces sobre el presupuesto de 16 ms, pero el
+margen se lo van a comer los cerebros, que es donde estaba la estimación
+peligrosa.
+
+**Efecto secundario que ya molesta**: la batería de tests tarda unos cuatro
+minutos la parte rápida y más de diez la completa, porque comprobar lo que
+emerge exige simular años. Se partió en dos (`npm run test:rapido` y
+`npm test`), porque **un test que no se corre porque tarda mucho es un test que
+no existe**.
 
 **Qué propongo.** Empezar en **64×64 (4.096 celdas) y ~500 criaturas**, no en
 128×128. No es solo por rendimiento: cumple mejor el objetivo declarado en §1.1
