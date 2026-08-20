@@ -120,54 +120,48 @@ sigue conservándose exactamente con la difusión sobre la nueva tabla de vecino
 5. 30 fps en un móvil de gama media, con la simulación por debajo de su
    presupuesto.
 
-## Fase 2 — Química  ·  PASA SU CRITERIO · con un resultado nulo honesto
+## Fase 2 — Química ✅ TERMINADA
 
-**Lo que funciona**, medido a 8.000–20.000 ticks por semilla:
+Aparecen ciclos autocatalíticos sin que nadie los ponga, **y cada mundo tiene
+los suyos**. Medido a 8.000 ticks por semilla:
 
-| | al empezar | ahora |
+| | al empezar la fase | al terminarla |
 |---|---|---|
-| Moléculas distintas vivas | 42 – 241 | **13.000 – 13.600** |
-| Largo medio de cadena | 2,77 | 2,52 |
-| Cadenas de 8 átomos | casi ninguna | decenas de miles de copias |
-| Coste del tick | 5,8 ms | 6,9 ms (de 16) |
+| Moléculas distintas vivas | 42 – 241 | **14.500 – 15.400** |
+| Largo medio de cadena | 2,77 | **6,16** |
+| Moléculas dominantes distintas entre celdas | 7 de 2.562 | **548 de 2.562** |
+| Autocatalíticas sostenidas | 12, siempre las mismas | **66 – 73 por semilla** |
+| De ellas, propias de un solo mundo | 0 | **34 de 88** |
+| Coste del tick | 5,8 ms | 6,3 ms (de 16) |
 
-- Átomos conservados exactos. La sopa no se para nunca.
-- **Aparecen moléculas autocatalíticas en el 100 % de las semillas**, sin que
-  nadie las pusiera. `AFA` lleva dentro la plantilla que sujeta su propio enlace:
-  se ayuda a nacer.
+Ejemplos de las que salen en un mundo y no en otro: `FAFBEBEB`, `EBDCDCDC`,
+`CDCDCDBE`. No son los patrones alternos simples de antes — son cadenas
+mezcladas, hijas de la historia concreta de ese planeta.
 
-### El resultado nulo, dicho tal cual
+### Qué lo desatascó, y no era lo que parecía
 
-**Cuáles moléculas se autocatalizan NO depende de la semilla.** Salen siempre las
-mismas 14. Se probaron tres palancas y ninguna lo movió:
+Se probaron cuatro cosas. Las tres primeras mejoraron la química pero **no**
+movieron la aguja de lo que importaba:
 
-1. **Afinidad graduada** en vez de binaria → de 42 a 7.500 moléculas distintas.
-   Las autocatalíticas, las mismas.
-2. **Dímeros con cajón propio**, fuera de las 24 ranuras que acaparaban → de
-   7.500 a 50.000 moléculas, y las cadenas de 8 por fin sobreviven. Las
-   autocatalíticas, las mismas.
-3. **Unión base baja para que el catalizador decida** — se descubrió que con la
-   unión a 620 y empuje ×14 la probabilidad salía 8.680 sobre 1.000, o sea que
-   **el catalizador estaba saturado y no daba ninguna ventaja real**. Arreglado.
-   Las autocatalíticas, las mismas.
+1. **Afinidad graduada** en vez de binaria (42 → 7.500 moléculas distintas).
+2. **Dímeros con cajón propio**, fuera de las 24 ranuras que acaparaban al 100 %
+   (7.500 → 50.000, y las cadenas largas por fin sobreviven).
+3. **Catalizador desaturado**: con la unión base a 620 y empuje ×14 la
+   probabilidad salía 8.680 sobre 1.000, o sea siempre. Era un mecanismo que
+   parecía que estaba y no estaba.
 
-**Por qué, y está enumerado, no supuesto**: contando todas las cadenas posibles,
-de largo 3 solo **6 de 216** pueden catalizarse a sí mismas, y de largo 4, 102 de
-1.296. El mundo encuentra las 6 y unas cuantas de largo 4 — **las encuentra todas
-las veces**. No hay nada contingente que descubrir a esa escala. La contingencia
-vive en las cadenas de 5 o más, donde hay miles de opciones, y ahí ninguna llega
-a concentrarse lo suficiente: con 13.000 especies repartiéndose la materia, cada
-una tiene demasiadas pocas copias para amplificarse.
+La cuarta fue **la escasez de alimento**. Con átomos sueltos abundantes, cada
+molécula alcanzaba su equilibrio sin estorbar a nadie y todas las celdas del
+planeta acababan idénticas. Con átomos escasos, los ciclos **compiten por
+ellos**: el que se adelanta en una celda se lleva la comida y ahoga a los demás,
+y el ganador depende de quién tuvo suerte primero.
 
-### La siguiente palanca, sin probar todavía
+**Sin escasez no hay competencia, y sin competencia no hay historia.**
 
-**Bajar la difusión química.** Ahora las moléculas se reparten entre celdas
-vecinas rápido, así que todo el planeta converge a la misma sopa. Si cada celda
-mezclara menos con sus vecinas, **regiones distintas podrían desarrollar químicas
-distintas** — y ahí sí la historia local decidiría quién gana. Las celdas ya son
-compartimentos; lo que falta es que lo sean de verdad.
-
-*Lo que no se hace*: sembrar a mano moléculas interesantes.
+*Hipótesis descartada por el camino*: se creyó que era la difusión química la que
+homogeneizaba el planeta. Se midió: con difusión lenta salían 534 dominantes
+distintas y con rápida 548. **La difusión no pintaba nada.** Queda anotado
+porque un descarte medido vale tanto como un acierto.
 
 ---
 

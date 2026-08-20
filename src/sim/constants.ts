@@ -577,8 +577,33 @@ export const N_DIMEROS = N_TIPOS_ATOMO * N_TIPOS_ATOMO;
 /** Moléculas de tres átomos o más que se siguen por celda. */
 export const TOP_N_MOLECULAS = 24;
 
-/** Átomos sueltos de cada tipo con los que arranca cada celda. */
-export const ATOMOS_INICIALES_POR_TIPO = 160;
+/**
+ * Átomos sueltos de cada tipo con los que arranca cada celda.
+ *
+ * **Este número resultó ser el que decide si el mundo tiene una química o
+ * muchas**, y no era el que yo esperaba.
+ *
+ * Con 160 el alimento sobraba: cada molécula llegaba a su nivel de equilibrio
+ * sin estorbar a las demás, así que **todas las celdas del planeta convergían a
+ * la misma sopa** — 7 moléculas dominantes distintas en 2.562 celdas — y las
+ * autocatalíticas eran siempre las mismas 14 en cualquier semilla.
+ *
+ * Con 26 el alimento escasea, y entonces los ciclos autocatalíticos **compiten
+ * por él**. El que se adelanta en una celda se lleva los átomos y ahoga a los
+ * demás, así que el ganador depende de quién tuvo suerte primero. Medido:
+ *
+ *   moléculas dominantes distintas entre celdas    7  →  548
+ *   largo medio de cadena                       2,22  →  6,16
+ *   autocatalíticas propias de una sola semilla    0  →  34 de 88
+ *
+ * La lección, que vale para todo el proyecto: **sin escasez no hay competencia,
+ * y sin competencia no hay historia.** Todo el mundo llega al mismo sitio.
+ *
+ * Antes se probó bajar la difusión química creyendo que era ella la que
+ * homogeneizaba el planeta. No lo era: con difusión lenta salían 534 dominantes
+ * y con rápida 548. La difusión no pintaba nada.
+ */
+export const ATOMOS_INICIALES_POR_TIPO = 26;
 
 /**
  * Intentos de reacción por celda y tick.
