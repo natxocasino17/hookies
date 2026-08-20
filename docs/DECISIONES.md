@@ -217,3 +217,115 @@ es lo que ya se había decidido en D4.
 **Pendiente de medir**: los 0,037 ms por tick medidos en la fase 0 son sobre la
 rejilla cuadrada. Con tabla de vecinos habrá que volver a medirlo; se espera
 algo peor por el acceso a memoria menos ordenado, y hay que comprobar cuánto.
+
+---
+
+## D11 — Existen objetos sueltos, y son trozos de materia
+
+**Se elige**: en el mundo hay cosas tiradas por el suelo que se pueden agarrar,
+llevar y soltar. Un objeto **no es un tipo**: es un trozo de materia con una
+composición, igual que una molécula es su cadena.
+
+Sus propiedades salen de esa composición, no de una tabla:
+
+- **dureza** → llevarlo agarrado hace que morder haga más daño
+- **peso** → llevarlo cuesta energía y frena
+- **inflamabilidad** → llevarlo cerca del fuego lo enciende, y entonces lo
+  llevas encendido
+- **volumen** → soltarlo en una celda estorba el paso
+
+**Por qué hacía falta**: agarrar/soltar es uno de los cinco verbos, y hasta
+ahora en el mundo no había prácticamente nada que agarrar (solo otros bichos,
+crías y cadáveres). Sin cosas sueltas, la tecnología no es improbable: es
+imposible. No hay nada que coger.
+
+**De dónde salen los trozos**: de la química que precipita sólidos, de los
+cadáveres al pudrirse, de la ceniza del fuego, y de **morder cosas grandes**.
+Romper una piedra o arrancarle una rama a un árbol es morderla; no hace falta
+ningún verbo nuevo.
+
+**Lo que NO se hace**: declarar una lista de objetos (piedra, palo, antorcha).
+Eso sería exactamente lo mismo que escribir el diccionario de palabras. Hay un
+trozo que resulta ser duro, y ya está; nadie escribió "piedra" en ninguna parte.
+
+**La dificultad honesta, que no es la física**: la cadena "muerdo el árbol →
+agarro el trozo → muerdo otra cosa con él" es larga y **solo paga en el último
+paso**. Los anteriores solo cuestan energía. Para un cerebro que aprende por
+recompensa inmediata, eso es de lo más difícil que hay. Puede no pasar nunca, y
+sería un resultado legítimo.
+
+**Predicción**: la primera tecnología de este mundo no será una herramienta,
+será **llevar fuego**, porque es la única cadena corta: tengo frío, cojo esto
+que arde, dejo de tener frío. Paga al instante. Si algo va a emerger primero,
+es eso.
+
+---
+
+## D12 — Plantas individuales, y bayas que nadie catalogó
+
+**Se elige**: la vegetación deja de ser un número de biomasa por celda y pasa a
+ser **plantas individuales** — árboles y flores— con su posición, su edad y su
+tamaño. Los árboles dan fruto y madera; al morir dejan trozos en el suelo.
+
+**Por qué es asequible**: las plantas no piensan. No llevan cerebro, que es lo
+caro. Un árbol cuesta una milésima de lo que cuesta un bicho, así que caben
+miles sin tocar el presupuesto.
+
+**Las bayas**: se pidió "diez o quince bayas de colores distintos que al
+mezclarlas cambien de efecto, pero que ellos no lo sepan". Se da entero, **sin
+escribir la lista**:
+
+- Una baya es el fruto de una planta, y su química es una cadena corta.
+- **El color sale de la química**: es una proyección determinista de la cadena.
+  No se le asigna; el color *es* la química hecha visible. Misma cadena, mismo
+  color, siempre.
+- **Cuántas hay no se declara.** Salen las que la química de las plantas
+  sostenga de forma estable. Si salen doce, hay doce.
+- **Mezclarlas cambia el efecto**: automático, dos cadenas en la misma tripa
+  reaccionan entre sí. Cero recetas escritas.
+- **A una especie la envenena y a otra la alimenta**: automático, porque el
+  genoma ya decide qué reacciones sabe catalizar cada bicho.
+
+**Lo que se descubrió al diseñarlo**: como químicas parecidas dan colores
+parecidos, **el color informa de verdad**. Un bicho puede aprender "las rojizas
+me sientan mal" y estar más o menos en lo cierto. Más o menos, porque a veces
+una parece roja y por dentro no lo es. De la misma regla salen a la vez el
+conocimiento auténtico y la superstición, sin escribir ninguno de los dos.
+
+**Regalo extra**: como el fruto depende de lo que la planta chupó del suelo,
+**las bayas del norte no son las del sur**. El que migra se encuentra frutos
+desconocidos y su farmacia aprendida deja de servirle.
+
+**Lo que no se puede prometer**: que salgan diez o quince. Puede que la química
+dé tres (aburrido) o doscientas (ilegible). Se ajusta en el laboratorio tocando
+la química hasta que el número caiga bien. Si salen cuatro y no hay manera de
+subirlo, **se dice, no se meten once a mano**.
+
+---
+
+## D13 — Las heridas se curan, y curarse es peligroso
+
+**Se elige**: el daño deja de ser una cuenta que solo sube. Un cuerpo puede
+gastar energía y materia en bajárselo, y **algunas moléculas cambian esa
+velocidad**: unas curan, otras la frenan, otras envenenan.
+
+**Por qué hacía falta**: hasta ahora nada en todo el diseño bajaba el daño de un
+bicho. En un mundo donde las heridas no cierran nunca, la palabra "medicina" no
+significa nada: no hay nada que una medicina pueda hacer.
+
+**Qué maquinaria nueva hace falta**: casi ninguna. El genoma ya decide qué
+reacciones sabe hacer cada criatura — que es lo que decide qué le alimenta y qué
+le sienta mal. Curarse es una reacción más. Lo que faltaba era el *enlace* entre
+la química y el daño del cuerpo.
+
+**Que no sea barato para ellos**: comer algo sin saber qué es tiene que ser una
+apuesta. Puede curarte, puede no hacer nada, o puede matarte más rápido que la
+herida. Aprender qué cura **se paga con bichos muertos**, y por eso ver a otro
+comerse algo y no morirse es información valiosísima. Ahí es donde la imitación
+pasa a ser el centro de todo.
+
+**La consecuencia que más interesa**: la medicina puede estar equivocada. Un
+linaje puede aprender "cuando me duele, como lo azul", que lo azul no haga
+absolutamente nada, y pasárselo a otros por imitación. Eso es una superstición
+médica y se propaga como una cultura. **El detector mide las dos cosas: las
+medicinas que funcionan y las que no.**
