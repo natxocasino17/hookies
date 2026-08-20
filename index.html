@@ -2,47 +2,76 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0a1020" />
     <title>hookies</title>
     <style>
-      :root {
-        color-scheme: dark;
-        --fondo: #0d0f12;
-        --tinta: #e6e3dc;
-        --tenue: #7c8391;
-      }
       * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; overflow: hidden; }
       body {
-        margin: 0;
-        min-height: 100dvh;
-        background: var(--fondo);
-        color: var(--tinta);
-        font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
-        display: grid;
-        place-items: center;
-        padding: 2rem 1.25rem;
+        background: #0a1020;
+        color: #dfe6ef;
+        font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        touch-action: none;
       }
-      main { width: min(38rem, 100%); }
-      h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 0.25rem; }
-      p.sub { color: var(--tenue); margin: 0 0 2rem; }
-      dl { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1.5rem; margin: 0; }
-      dt { color: var(--tenue); }
-      dd { margin: 0; font-variant-numeric: tabular-nums; }
-      footer { margin-top: 2rem; color: var(--tenue); font-size: 0.85rem; }
+      #lienzo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+      .panel {
+        position: fixed;
+        left: max(1rem, env(safe-area-inset-left));
+        top: max(1rem, env(safe-area-inset-top));
+        padding: 0.85rem 1rem;
+        background: rgba(10, 16, 32, 0.68);
+        border: 1px solid rgba(150, 180, 220, 0.18);
+        border-radius: 3px;
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transition: opacity 0.6s ease;
+      }
+      body.listo .panel { opacity: 1; }
+
+      h1 {
+        margin: 0 0 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #8fa8c4;
+      }
+      dl { display: grid; grid-template-columns: auto auto; gap: 0.25rem 1.2rem; margin: 0; }
+      dt { color: #7e93ad; }
+      dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+      .pie {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        color: #6b7e96;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+        opacity: 0;
+        transition: opacity 0.6s ease 0.3s;
+      }
+      body.listo .pie { opacity: 1; }
     </style>
   </head>
   <body>
-    <main>
+    <canvas id="lienzo"></canvas>
+
+    <div class="panel">
       <h1>hookies</h1>
-      <p class="sub">Fase 0 — esqueleto. Todavía no hay mundo que mirar.</p>
       <dl>
         <dt>semilla</dt><dd id="semilla">—</dd>
+        <dt>celdas</dt><dd id="celdas">—</dd>
+        <dt>tierra</dt><dd id="tierra">—</dd>
         <dt>tick</dt><dd id="tick">—</dd>
         <dt>materia</dt><dd id="materia">—</dd>
-        <dt>worker</dt><dd id="worker">arrancando…</dd>
       </dl>
-      <footer>La simulación corre en un Web Worker. Esta página solo mira.</footer>
-    </main>
+    </div>
+
+    <p class="pie">arrastra para girar · rueda o pellizco para acercarte</p>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

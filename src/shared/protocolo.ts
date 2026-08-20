@@ -22,7 +22,14 @@ export type OrdenAlWorker =
   | { tipo: 'PEDIR_GUARDADO' };
 
 export type NoticiaDelWorker =
-  | { tipo: 'INSTANTANEA'; tick: number; ancho: number; alto: number; materia: Int32Array }
+  | {
+      tipo: 'INSTANTANEA';
+      tick: number;
+      nivel: number;
+      nCeldas: number;
+      altura: Float32Array;
+      materia: Int32Array;
+    }
   | { tipo: 'TELEMETRIA'; ultima: Muestra | null }
   | { tipo: 'GUARDADO'; bytes: Uint8Array }
   | {

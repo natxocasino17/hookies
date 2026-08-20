@@ -26,8 +26,15 @@ function enviarInstantanea(): void {
   if (!mundo) return;
   const i = mundo.instantanea();
   contar(
-    { tipo: 'INSTANTANEA', tick: i.tick, ancho: i.ancho, alto: i.alto, materia: i.materia },
-    [i.materia.buffer],
+    {
+      tipo: 'INSTANTANEA',
+      tick: i.tick,
+      nivel: i.nivel,
+      nCeldas: i.nCeldas,
+      altura: i.altura,
+      materia: i.materia,
+    },
+    [i.altura.buffer, i.materia.buffer],
   );
   contar({ tipo: 'TELEMETRIA', ultima: mundo.telemetria.ultima });
 }

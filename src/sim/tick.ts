@@ -5,57 +5,45 @@
  * describir la intención de una criatura (CLAUDE.md §1.1): no hay "buscar
  * comida" ni "huir", hay fuerzas, difusión y costes.
  *
- * Fase 0: lo único que ocurre es que la materia se reparte entre celdas
- * vecinas. Es poco, pero es física real y exactamente conservativa, así que el
- * test de masa está probando algo de verdad desde el primer día. Las fases
- * siguientes agregan capas encima sin cambiar esta forma.
+ * Fase 1a: lo único que ocurre es que la materia se reparte entre celdas
+ * vecinas del planeta. Es poco, pero es física real y exactamente
+ * conservativa, así que el test de masa está probando algo de verdad.
  */
 
-import { DIFUSION_MATERIA_DIVISOR } from './constants.js';
+import { DIFUSION_MATERIA_DIVISOR, MAX_VECINOS } from './constants.js';
 import type { EstadoMundo } from './estado.js';
+import type { Geometria } from './geodesica.js';
 import { siguienteU32 } from './rng.js';
 
 /**
- * Reparte materia entre celdas vecinas.
+ * Reparte materia entre celdas vecinas del planeta.
  *
  * Se mueve una fracción entera de la diferencia entre dos celdas contiguas: lo
  * que una pierde es exactamente lo que la otra gana, con lo cual la masa se
  * conserva por construcción y no por aproximación.
  *
+ * Cada pareja se toca una sola vez, mirando solo a los vecinos de índice mayor.
+ * Si se recorrieran todos los vecinos, cada pareja se procesaría dos veces y la
+ * difusión iría al doble de velocidad en unas direcciones que en otras.
+ *
  * El barrido alterna de sentido según el azar del mundo porque recorrer siempre
- * en la misma dirección introduce una deriva sistemática hacia ese lado, que
- * sería un artefacto del método y no una corriente del mundo.
+ * en el mismo orden introduce una deriva sistemática, que sería un artefacto
+ * del método y no una corriente del planeta.
  */
-function difundirMateria(estado: EstadoMundo, alReves: boolean): void {
-  const { materia, ancho, alto } = estado;
+function difundirMateria(estado: EstadoMundo, geo: Geometria, alReves: boolean): void {
+  const { materia } = estado;
+  const { vecinos, nVecinos, nCeldas } = geo;
   const divisor = DIFUSION_MATERIA_DIVISOR;
 
+  const primera = alReves ? nCeldas - 1 : 0;
   const paso = alReves ? -1 : 1;
-  const primeraFila = alReves ? alto - 1 : 0;
-  const finFila = alReves ? -1 : alto;
-  const primeraCol = alReves ? ancho - 1 : 0;
 
-  // Vecinos horizontales.
-  for (let y = primeraFila; y !== finFila; y += paso) {
-    const fila = y * ancho;
-    for (let n = 0; n < ancho - 1; n++) {
-      const x = alReves ? primeraCol - n : primeraCol + n;
-      const i = fila + x;
-      const j = fila + (alReves ? x - 1 : x + 1);
-      const flujo = ((materia[i]! - materia[j]!) / divisor) | 0;
-      materia[i] = materia[i]! - flujo;
-      materia[j] = materia[j]! + flujo;
-    }
-  }
-
-  // Vecinos verticales.
-  for (let n = 0; n < alto - 1; n++) {
-    const y = alReves ? primeraFila - n : primeraFila + n;
-    const fila = y * ancho;
-    const filaVecina = (alReves ? y - 1 : y + 1) * ancho;
-    for (let x = 0; x < ancho; x++) {
-      const i = fila + x;
-      const j = filaVecina + x;
+  for (let n = 0; n < nCeldas; n++) {
+    const i = primera + n * paso;
+    const cuantos = nVecinos[i]!;
+    for (let k = 0; k < cuantos; k++) {
+      const j = vecinos[i * MAX_VECINOS + k]!;
+      if (j <= i) continue;
       const flujo = ((materia[i]! - materia[j]!) / divisor) | 0;
       materia[i] = materia[i]! - flujo;
       materia[j] = materia[j]! + flujo;
@@ -64,8 +52,8 @@ function difundirMateria(estado: EstadoMundo, alReves: boolean): void {
 }
 
 /** Avanza el mundo un tick. Es la única función que puede modificar el estado. */
-export function avanzarUnTick(estado: EstadoMundo): void {
+export function avanzarUnTick(estado: EstadoMundo, geo: Geometria): void {
   const alReves = (siguienteU32(estado.rng) & 1) === 1;
-  difundirMateria(estado, alReves);
+  difundirMateria(estado, geo, alReves);
   estado.tick += 1;
 }

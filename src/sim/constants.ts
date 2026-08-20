@@ -22,18 +22,98 @@ export const SEMILLA_POR_DEFECTO = 20260819;
 // ---------------------------------------------------------------------------
 
 /**
- * Ancho y alto del grid, en celdas.
+ * Cuántas veces se subdivide el icosaedro que forma el planeta.
+ * Cada nivel multiplica las celdas por cuatro:
  *
- * 64x64 por decisión D2 de docs/DECISIONES.md: mundo chico y población densa.
- * Con ~500 criaturas hay una cada ocho celdas y los encuentros son constantes.
- * En 128x128 serían bichos perdidos en un continente vacío, y los bichos solos
- * no hablan. Subir solo si el laboratorio dice que sobra presupuesto.
+ *   3 →    642 celdas      4 →  2.562 celdas      5 → 10.242 celdas
+ *
+ * Se usa 4 por la decisión D4: mundo chico y población densa. Con unas 500
+ * criaturas hay una cada cinco celdas y los encuentros son constantes. En un
+ * planeta de 10.242 serían bichos perdidos en un mundo vacío, y de un mundo de
+ * ermitaños no hay nada que mirar.
  */
-export const GRID_ANCHO = 64;
-export const GRID_ALTO = 64;
+export const NIVEL_SUBDIVISION = 4;
 
-/** Celdas totales. Derivado, no tocar a mano. */
-export const GRID_CELDAS = GRID_ANCHO * GRID_ALTO;
+/**
+ * Vecinos máximos de una celda. Son seis, salvo doce celdas que tienen cinco:
+ * los doce pentágonos que toda esfera cubierta de hexágonos necesita. No es un
+ * defecto del método, es geometría — un balón de fútbol tiene los mismos doce.
+ */
+export const MAX_VECINOS = 6;
+
+/** Radio del planeta en unidades de mundo. Solo afecta a las escalas de dibujo. */
+export const RADIO_PLANETA = 1;
+
+// ---------------------------------------------------------------------------
+// Terreno
+// ---------------------------------------------------------------------------
+
+/** Capas de ruido que se suman. Más capas = más detalle y más coste. */
+export const OCTAVAS_TERRENO = 5;
+
+/** Cuánto pierde de fuerza cada capa respecto a la anterior. */
+export const PERSISTENCIA_TERRENO = 0.5;
+
+/** Cuánto se encoge cada capa respecto a la anterior. */
+export const LACUNARIDAD_TERRENO = 2.0;
+
+/**
+ * Tamaño de los continentes. Más bajo = pocas masas grandes; más alto = muchas
+ * islas pequeñas. Con 1.5 salen dos o tres continentes reconocibles.
+ */
+export const FRECUENCIA_CONTINENTES = 1.5;
+
+/**
+ * Nivel del mar, entre -1 y 1 sobre la altura cruda del ruido.
+ * Subirlo ahoga el mundo; bajarlo lo seca. Con 0.02 sale en torno a un tercio
+ * de tierra, que es lo que da costas largas — y las costas son donde se junta
+ * todo.
+ */
+export const NIVEL_DEL_MAR = 0.02;
+
+/**
+ * Cuánto sobresale el relieve respecto al radio del planeta.
+ *
+ * Es exageración a propósito: con la altura real de las montañas de la Tierra,
+ * un planeta de este tamaño se vería completamente liso. Medido sobre varias
+ * semillas, la tierra llega a 0,67 de altura cruda, así que los picos quedan a
+ * un 8 % del radio y las montañas se leen desde lejos.
+ */
+export const ESCALA_RELIEVE = 0.12;
+
+/**
+ * Cuánto se aplasta la profundidad del fondo marino al dibujarlo.
+ *
+ * El fondo baja de verdad —tiene que quedar por debajo del océano para que el
+ * agua lo tape— pero comprimido: el relieve abisal no se ve bajo el agua y sin
+ * comprimir dejaría el planeta con el interior lleno de púas.
+ */
+export const COMPRESION_FONDO_MARINO = 0.35;
+
+/**
+ * El escalón de la costa: cuánto se levanta toda la tierra sobre el nivel del
+ * mar, y cuánto se hunde todo el fondo marino por debajo.
+ *
+ * No es maquillaje, resuelve dos cosas a la vez. Sin el hundido, los bajíos
+ * quedan a la misma altura que la superficie del agua y asoman por encima
+ * peleándose con ella. Sin el levantado, los continentes son una lámina sin
+ * grosor en vez de bloques de tierra.
+ *
+ * Y de paso deja lo que se buscaba: **un acantilado en toda la línea de costa**,
+ * que es donde se junta todo lo interesante.
+ */
+export const ALZADO_DE_LA_TIERRA = 0.16;
+export const HUNDIDO_DEL_MAR = 0.14;
+
+/**
+ * Escalones de altura del terreno.
+ *
+ * La altura de cada celda se redondea a uno de estos escalones. No es un truco
+ * estético: como cada celda es un prisma de tapa plana, dos celdas vecinas con
+ * escalones distintos dejan un acantilado entre ellas. De ahí sale el aspecto
+ * de mesetas y cantiles, y sale de la geometría, no de un filtro.
+ */
+export const ESCALONES_RELIEVE = 12;
 
 // ---------------------------------------------------------------------------
 // El reloj

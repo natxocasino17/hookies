@@ -10,14 +10,21 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { crearEstado, deserializar, huellaEstado, serializar } from '../src/sim/estado.js';
+import {
+  crearEstado,
+  deserializar,
+  geometriaDe,
+  huellaEstado,
+  serializar,
+} from '../src/sim/estado.js';
 import { avanzarUnTick } from '../src/sim/tick.js';
 import { crearRng, siguienteU32 } from '../src/sim/rng.js';
 import { dExp, dLog, dSeno, dTanh, senoDeVuelta } from '../src/sim/math.js';
 
 function correr(semilla: number, ticks: number) {
   const estado = crearEstado(semilla);
-  for (let i = 0; i < ticks; i++) avanzarUnTick(estado);
+  const geo = geometriaDe(estado);
+  for (let i = 0; i < ticks; i++) avanzarUnTick(estado, geo);
   return estado;
 }
 
@@ -39,9 +46,12 @@ describe('determinismo', () => {
     const entera = correr(777, 10_000);
 
     const partida = crearEstado(777);
-    for (let i = 0; i < 4000; i++) avanzarUnTick(partida);
+    const geo = geometriaDe(partida);
+    for (let i = 0; i < 4000; i++) avanzarUnTick(partida, geo);
+    // Se reconstruye desde los bytes, igual que al abrir la app otro día.
     const revivida = deserializar(serializar(partida));
-    for (let i = 0; i < 6000; i++) avanzarUnTick(revivida);
+    const geoRevivida = geometriaDe(revivida);
+    for (let i = 0; i < 6000; i++) avanzarUnTick(revivida, geoRevivida);
 
     expect(huellaEstado(revivida)).toBe(huellaEstado(entera));
   });
@@ -54,6 +64,7 @@ describe('determinismo', () => {
     expect(copia.semilla).toBe(estado.semilla);
     expect(Array.from(copia.rng)).toEqual(Array.from(estado.rng));
     expect(Array.from(copia.materia)).toEqual(Array.from(estado.materia));
+    expect(Array.from(copia.altura)).toEqual(Array.from(estado.altura));
   });
 
   it('el generador de azar da siempre la misma secuencia', () => {

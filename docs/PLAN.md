@@ -57,40 +57,68 @@ navegadores.
 
 ---
 
-## Fase 1 — Mundo físico
+## Fase 1 — El planeta
 
-**Se construye**
+Reescrita después de D10 (el mundo es una esfera, no un cuadrado), D12 (plantas
+individuales y bayas) y D11 (objetos sueltos). Se parte en dos mitades para
+poder mirar algo pronto.
 
-- Grid 128×128. Por celda: altura, humedad, temperatura, nutrientes, biomasa
-  vegetal, y el **vector de marca del suelo (4 números)**, que existe desde el
-  tick cero y se degrada muy lento con lluvia y pisadas.
-- Generación de terreno determinista desde la semilla (ruido de valor propio,
-  no librería externa, por determinismo entre motores).
-- Ciclo día/noche, estaciones, temperatura por altura y hora, lluvia que
-  reparte humedad, escorrentía por gradiente hacia el agua.
-- Plantas: crecen según humedad, nutrientes y luz. Consumen nutrientes del
-  suelo y los devuelven al morir. Sin especies vegetales: biomasa escalar.
-- Render cenital con Three.js: instancias sobre grid, zoom y paneo, 30 fps,
-  suspensión al ocultar la pestaña.
-- Capas de visualización conmutables: altura, humedad, temperatura, nutrientes,
-  biomasa, marca del suelo.
+### 1a — La bola ✅ TERMINADA
 
-**Aceptación (medible)**
+**Resultado**: 55 tests en verde. Planeta de 2.562 celdas con sus doce
+pentágonos obligatorios, vecindad recíproca comprobada celda a celda, y celdas
+que no se diferencian en tamaño más de un 30 %. Terreno desde la semilla con
+entre un 31 % y un 43 % de tierra según la semilla. El tick cuesta 0,066 ms
+—casi el doble que sobre la rejilla cuadrada, por el acceso salteado a la tabla
+de vecinos— y sigue muy por debajo del presupuesto de 16 ms. Masa conservada
+exacta en 100.000 ticks con tres semillas.
 
-1. Conservación: en 100.000 ticks de laboratorio, el total de nutrientes +
-   biomasa + materia en el suelo se mantiene constante hasta el epsilon de
-   Float32 documentado; la deriva acumulada se reporta y no crece con el tiempo.
-2. Estacionalidad: la serie de biomasa total muestra periodicidad detectable
-   (autocorrelación con pico en el periodo del año configurado), no una
-   monotonía ni una meseta plana.
-3. El mundo no se congela ni se satura: al cabo de 100.000 ticks, biomasa media
-   y humedad media están estrictamente dentro del rango (0, máximo), no pegadas
-   a ninguno de los dos bordes.
-4. Render a 30 fps estables en un móvil de gama media, con el presupuesto de
-   simulación por debajo de 16 ms/tick.
-5. Cualitativo: se puede mirar diez minutos en x10 y se ve cambiar con sentido.
+Dos fallos encontrados y corregidos mirando el planeta dibujado, no leyendo el
+código: el fondo del mar se estaba subiendo al nivel del mar en vez de hundirlo,
+así que el suelo marino asomaba por encima del agua; y sin el escalón de la
+costa los continentes eran una lámina sin grosor.
 
----
+**Lo construido**
+
+- **Rejilla geodésica**: icosaedro subdividido cuatro veces y su dual, que da
+  **2.562 celdas** casi iguales — hexágonos con doce pentágonos, que son
+  inevitables en cualquier esfera. Cada celda con su tabla de vecinos.
+- Terreno desde la semilla con ruido 3D determinista sobre la esfera: sin
+  costuras y sin bordes, porque una esfera no tiene ni una cosa ni la otra.
+- Nivel del mar, y el océano como una esfera translúcida a esa altura.
+- Render: cada celda es un prisma de tapa plana, así que **los acantilados
+  aparecen solos** donde dos celdas vecinas tienen alturas distintas. Ese es el
+  aspecto escalonado de la referencia, y sale de la geometría, no de un truco.
+- Cámara: girar el planeta y acercarse.
+
+*Aceptación:* se ve el planeta, la misma semilla da el mismo planeta, y la masa
+sigue conservándose exactamente con la difusión sobre la nueva tabla de vecinos.
+
+### 1b — El mundo respirando
+
+- Rotación del planeta e inclinación del eje. **El día, la noche y las
+  estaciones dejan de ser fórmulas y pasan a ser geometría**: la línea de la
+  noche es dónde no da el sol, y los polos son fríos porque el sol les llega de
+  lado.
+- Temperatura, humedad, lluvia, escorrentía hacia el mar.
+- Plantas individuales: árboles y flores que crecen según humedad, luz y
+  nutrientes, dan fruto y al morir dejan trozos de materia en el suelo.
+- El vector de marca del suelo, que existe desde el tick cero y nadie interpreta.
+- Las dos vistas: el planeta entero y el suelo, con paso continuo entre ambas.
+
+*Aceptación (medible):*
+
+1. Conservación: en 100.000 ticks, materia constante exacta; la deriva se
+   reporta y no crece.
+2. Estacionalidad: la biomasa total oscila con periodo detectable, no es una
+   meseta ni una rampa.
+3. El mundo no se congela ni se satura: biomasa y humedad medias se quedan
+   dentro del rango, no pegadas a ningún borde.
+4. **Nada de lo que se ve es decorativo**: cada color de la pantalla es la
+   lectura de un número real de la simulación. Las nubes se dibujan de la
+   humedad, así que donde hay nube va a llover.
+5. 30 fps en un móvil de gama media, con la simulación por debajo de su
+   presupuesto.
 
 ## Fase 2 — Química
 

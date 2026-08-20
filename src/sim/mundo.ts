@@ -8,15 +8,24 @@
  */
 
 import { PRESUPUESTO_MS_POR_TICK } from './constants.js';
-import { crearEstado, deserializar, materiaTotal, serializar, type EstadoMundo } from './estado.js';
+import {
+  crearEstado,
+  deserializar,
+  geometriaDe,
+  materiaTotal,
+  serializar,
+  type EstadoMundo,
+} from './estado.js';
+import type { Geometria } from './geodesica.js';
 import { avanzarUnTick } from './tick.js';
 import { muestraVacia, Telemetria } from './telemetria.js';
 
 /** Instantánea para dibujar. Copias, nunca el estado vivo. */
 export interface Instantanea {
   tick: number;
-  ancho: number;
-  alto: number;
+  nivel: number;
+  nCeldas: number;
+  altura: Float32Array;
   materia: Int32Array;
 }
 
@@ -30,6 +39,8 @@ export type Reloj = () => number;
 
 export class Mundo {
   readonly telemetria: Telemetria;
+  /** La rejilla del planeta. No se guarda con el mundo: se reconstruye. */
+  readonly geo: Geometria;
   private readonly reloj: Reloj;
   /** Materia total al nacer el mundo. El test de masa exige que no cambie nunca. */
   private readonly masaDeReferencia: number;
@@ -39,6 +50,7 @@ export class Mundo {
     opciones: { telemetria?: Telemetria; reloj?: Reloj } = {},
   ) {
     this.telemetria = opciones.telemetria ?? new Telemetria();
+    this.geo = geometriaDe(estado);
     this.reloj = opciones.reloj ?? (() => 0);
     this.masaDeReferencia = materiaTotal(estado);
   }
@@ -59,7 +71,7 @@ export class Mundo {
   avanzar(cuantos: number): void {
     for (let i = 0; i < cuantos; i++) {
       const t0 = this.reloj();
-      avanzarUnTick(this.estado);
+      avanzarUnTick(this.estado, this.geo);
       const coste = this.reloj() - t0;
 
       if (this.telemetria.debeMuestrear(this.estado.tick)) {
@@ -99,8 +111,9 @@ export class Mundo {
   instantanea(): Instantanea {
     return {
       tick: this.estado.tick,
-      ancho: this.estado.ancho,
-      alto: this.estado.alto,
+      nivel: this.estado.nivel,
+      nCeldas: this.estado.nCeldas,
+      altura: new Float32Array(this.estado.altura),
       materia: new Int32Array(this.estado.materia),
     };
   }

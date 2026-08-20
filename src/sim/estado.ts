@@ -4,11 +4,17 @@
  * Regla: todo lo que la simulación necesita para continuar está acá dentro y es
  * serializable. Nada vive en variables sueltas de un módulo ni en el navegador.
  * Si algo no está en esta estructura, no existe.
+ *
+ * Lo que NO se guarda: la rejilla del planeta. No depende de la semilla — es
+ * siempre la misma para un mismo nivel de subdivisión — así que se reconstruye
+ * al cargar y no ocupa sitio en el archivo.
  */
 
-import { GRID_ALTO, GRID_ANCHO, MATERIA_INICIAL_POR_CELDA, SEMILLA_POR_DEFECTO } from './constants.js';
+import { MATERIA_INICIAL_POR_CELDA, NIVEL_SUBDIVISION, SEMILLA_POR_DEFECTO } from './constants.js';
 import { crearRng, RNG_PALABRAS, type EstadoRng } from './rng.js';
 import { MARCA_ARCHIVO, migrar, VERSION_ESQUEMA } from './esquema.js';
+import { celdasDelNivel, construirGeometria, type Geometria } from './geodesica.js';
+import { generarAltura } from './terreno.js';
 
 export interface EstadoMundo {
   /** Semilla con la que nació este mundo. Junto con las intervenciones, lo define entero. */
@@ -18,8 +24,19 @@ export interface EstadoMundo {
   /** Estado del generador de azar. Viaja con el mundo para que el futuro también sea reproducible. */
   rng: EstadoRng;
 
-  ancho: number;
-  alto: number;
+  /** Nivel de subdivisión del planeta. Determina cuántas celdas tiene. */
+  nivel: number;
+  /** Celdas del planeta. Derivado del nivel, se guarda por comodidad de lectura. */
+  nCeldas: number;
+
+  /**
+   * Altura del terreno de cada celda.
+   *
+   * Pendiente para cuando llegue la erosión: la altura debería salir de cuánta
+   * materia sólida guarda la celda, y así mover tierra conservaría masa sola.
+   * Por ahora es un campo aparte, y queda dicho.
+   */
+  altura: Float32Array;
 
   /**
    * Átomos en cada celda, en cuentas enteras (decisión D7).
@@ -29,9 +46,7 @@ export interface EstadoMundo {
    * materia total no cambia jamás" sería mentira. Además es lo correcto, los
    * átomos no se parten.
    *
-   * En la fase 2 esto se reemplaza por las concentraciones de cada molécula;
-   * por ahora es un único tipo de materia genérica que solo se difunde, y sirve
-   * para que el test de masa esté probando algo de verdad desde el primer día.
+   * En la fase 2 esto se reemplaza por las concentraciones de cada molécula.
    */
   materia: Int32Array;
 
@@ -40,25 +55,25 @@ export interface EstadoMundo {
   energiaSalida: number;
 }
 
-/** Bytes de cabecera antes de los datos del grid. */
+/** Bytes de cabecera antes de los datos de las celdas. */
 const BYTES_CABECERA = 60;
 
 /** Crea un mundo nuevo. Determinista: la misma semilla da siempre el mismo mundo. */
 export function crearEstado(
   semilla: number = SEMILLA_POR_DEFECTO,
-  ancho: number = GRID_ANCHO,
-  alto: number = GRID_ALTO,
+  nivel: number = NIVEL_SUBDIVISION,
 ): EstadoMundo {
-  const celdas = ancho * alto;
-  const materia = new Int32Array(celdas);
+  const geo = construirGeometria(nivel);
+  const materia = new Int32Array(geo.nCeldas);
   materia.fill(MATERIA_INICIAL_POR_CELDA);
 
   return {
     semilla,
     tick: 0,
     rng: crearRng(semilla),
-    ancho,
-    alto,
+    nivel,
+    nCeldas: geo.nCeldas,
+    altura: generarAltura(geo, semilla),
     materia,
     energiaEntrada: 0,
     energiaSalida: 0,
@@ -78,8 +93,8 @@ export function materiaTotal(estado: EstadoMundo): number {
 
 /** Convierte el mundo entero a bytes, listo para guardar o exportar a archivo. */
 export function serializar(estado: EstadoMundo): Uint8Array {
-  const celdas = estado.ancho * estado.alto;
-  const bytes = new Uint8Array(BYTES_CABECERA + celdas * 4);
+  const n = estado.nCeldas;
+  const bytes = new Uint8Array(BYTES_CABECERA + n * 8);
   const vista = new DataView(bytes.buffer);
 
   vista.setUint32(0, MARCA_ARCHIVO, true);
@@ -89,16 +104,17 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   // años, un solo entero de 32 bits se quedaría corto.
   vista.setUint32(12, Math.floor(estado.tick / 4294967296) >>> 0, true);
   vista.setUint32(16, estado.tick >>> 0, true);
-  vista.setUint32(20, estado.ancho, true);
-  vista.setUint32(24, estado.alto, true);
+  vista.setUint32(20, estado.nivel, true);
+  vista.setUint32(24, n, true);
   for (let i = 0; i < RNG_PALABRAS; i++) {
     vista.setUint32(28 + i * 4, estado.rng[i]!, true);
   }
   vista.setFloat64(44, estado.energiaEntrada, true);
   vista.setFloat64(52, estado.energiaSalida, true);
 
-  for (let i = 0; i < celdas; i++) {
+  for (let i = 0; i < n; i++) {
     vista.setInt32(BYTES_CABECERA + i * 4, estado.materia[i]!, true);
+    vista.setFloat32(BYTES_CABECERA + n * 4 + i * 4, estado.altura[i]!, true);
   }
 
   return bytes;
@@ -127,11 +143,13 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
 
   const tickAlto = vista.getUint32(12, true);
   const tickBajo = vista.getUint32(16, true);
-  const ancho = vista.getUint32(20, true);
-  const alto = vista.getUint32(24, true);
-  const celdas = ancho * alto;
+  const nivel = vista.getUint32(20, true);
+  const n = vista.getUint32(24, true);
 
-  if (bytes.byteLength < BYTES_CABECERA + celdas * 4) {
+  if (n !== celdasDelNivel(nivel)) {
+    throw new Error(`El archivo dice ${n} celdas, pero el nivel ${nivel} tiene ${celdasDelNivel(nivel)}.`);
+  }
+  if (bytes.byteLength < BYTES_CABECERA + n * 8) {
     throw new Error('El archivo del mundo está incompleto o cortado.');
   }
 
@@ -140,17 +158,20 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     rng[i] = vista.getUint32(28 + i * 4, true);
   }
 
-  const materia = new Int32Array(celdas);
-  for (let i = 0; i < celdas; i++) {
+  const materia = new Int32Array(n);
+  const altura = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
     materia[i] = vista.getInt32(BYTES_CABECERA + i * 4, true);
+    altura[i] = vista.getFloat32(BYTES_CABECERA + n * 4 + i * 4, true);
   }
 
   return {
     semilla: vista.getUint32(8, true),
     tick: tickAlto * 4294967296 + tickBajo,
     rng,
-    ancho,
-    alto,
+    nivel,
+    nCeldas: n,
+    altura,
     materia,
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),
@@ -172,4 +193,9 @@ export function huellaEstado(estado: EstadoMundo): number {
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
+}
+
+/** La rejilla del planeta para este estado. No se guarda: se reconstruye. */
+export function geometriaDe(estado: EstadoMundo): Geometria {
+  return construirGeometria(estado.nivel);
 }
