@@ -26,7 +26,11 @@ export interface Instantanea {
   nivel: number;
   nCeldas: number;
   altura: Float32Array;
-  materia: Int32Array;
+  temperatura: Float32Array;
+  aguaSuelo: Int32Array;
+  humedadAire: Int32Array;
+  flujoAgua: Int32Array;
+  lluvia: Int32Array;
 }
 
 /**
@@ -114,7 +118,11 @@ export class Mundo {
       nivel: this.estado.nivel,
       nCeldas: this.estado.nCeldas,
       altura: new Float32Array(this.estado.altura),
-      materia: new Int32Array(this.estado.materia),
+      temperatura: new Float32Array(this.estado.temperatura),
+      aguaSuelo: new Int32Array(this.estado.aguaSuelo),
+      humedadAire: new Int32Array(this.estado.humedadAire),
+      flujoAgua: new Int32Array(this.estado.flujoAgua),
+      lluvia: new Int32Array(this.estado.lluvia),
     };
   }
 

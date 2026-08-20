@@ -3,65 +3,48 @@
  *
  * Cada celda es un prisma de tapa plana a la altura de su terreno. De ahí sale
  * solo el aspecto de mesetas y acantilados: donde dos celdas vecinas están a
- * alturas distintas queda una pared entre ellas. No hay ningún filtro ni ningún
- * truco de estilo — es la geometría del mundo, dibujada tal cual.
+ * alturas distintas queda una pared. No hay ningún filtro ni truco de estilo —
+ * es la geometría del mundo, dibujada tal cual.
+ *
+ * Lo mismo con la luz: el foco que ilumina la bola está donde la simulación dice
+ * que está el sol. La línea de la noche no está pintada, es dónde deja de llegar.
  *
  * Este archivo solo mira. No puede tocar el estado ni tomar decisiones de
  * simulación: recibe instantáneas y las convierte en triángulos.
  */
 
 import * as THREE from 'three';
-import { MAX_VECINOS, NIVEL_DEL_MAR, RADIO_PLANETA } from '../sim/constants.js';
+import { MAX_VECINOS, NIVEL_DEL_MAR, RADIO_PLANETA, TEMP_CONGELACION } from '../sim/constants.js';
 import { construirGeometria, type Geometria } from '../sim/geodesica.js';
 import { radioDeCelda, radioDelMar } from '../sim/terreno.js';
+import { direccionDelSol } from '../sim/clima.js';
+import { colorDeCelda } from './paleta.js';
 
-/**
- * Color de una celda según su altura.
- *
- * PROVISIONAL, y queda dicho: en la fase 1b esto se sustituye por la lectura de
- * la humedad y la biomasa reales, para cumplir la regla de que nada de lo que
- * se ve sea decorativo. Hoy la altura sí es un número real de la simulación,
- * así que el mapa de color ya está leyendo algo de verdad, pero es lo único.
- */
-function colorDeAltura(altura: number, destino: THREE.Color): THREE.Color {
-  // Los cortes están puestos sobre la distribución real de alturas, medida en
-  // el laboratorio: la tierra llega a 0,67 con la mediana en 0,167, y el mar
-  // baja hasta 0,8. Con ellos el verde domina y la roca sale solo en lo alto.
-  const bajoElAgua = NIVEL_DEL_MAR - altura;
-  if (bajoElAgua > 0) {
-    if (bajoElAgua > 0.42) return destino.setRGB(0.04, 0.10, 0.23); // fosa
-    if (bajoElAgua > 0.14) return destino.setRGB(0.07, 0.20, 0.40); // fondo
-    return destino.setRGB(0.20, 0.46, 0.58); // bajío
-  }
-
-  const sobre = altura - NIVEL_DEL_MAR;
-  if (sobre < 0.04) return destino.setRGB(0.87, 0.81, 0.58); // arena de la orilla
-  if (sobre < 0.21) return destino.setRGB(0.44, 0.68, 0.28); // pradera
-  if (sobre < 0.38) return destino.setRGB(0.27, 0.53, 0.21); // bosque
-  if (sobre < 0.54) return destino.setRGB(0.20, 0.41, 0.19); // bosque alto
-  if (sobre < 0.63) return destino.setRGB(0.52, 0.45, 0.35); // roca desnuda
-  return destino.setRGB(0.93, 0.94, 0.96); // nieve
+/** Qué vértices del dibujo pertenecen a cada celda, para repintarlas sin rehacerlas. */
+interface Trozos {
+  malla: THREE.BufferGeometry;
+  inicio: Int32Array;
+  cuantos: Int32Array;
 }
 
-/** Construye la malla del terreno: tapas planas y las paredes de los cantiles. */
-function construirMallaTerreno(geo: Geometria, altura: Float32Array): THREE.BufferGeometry {
+function construirMallaTerreno(geo: Geometria, altura: Float32Array): Trozos {
   const posiciones: number[] = [];
-  const colores: number[] = [];
-  const color = new THREE.Color();
+  const inicio = new Int32Array(geo.nCeldas);
+  const cuantos = new Int32Array(geo.nCeldas);
 
   const radios = new Float32Array(geo.nCeldas);
   for (let i = 0; i < geo.nCeldas; i++) radios[i] = radioDeCelda(altura[i]!, RADIO_PLANETA);
 
   for (let celda = 0; celda < geo.nCeldas; celda++) {
+    inicio[celda] = posiciones.length / 3;
     const lados = geo.nVecinos[celda]!;
     const r = radios[celda]!;
-    colorDeAltura(altura[celda]!, color);
 
     const cx = geo.centro[celda * 3]! * r;
     const cy = geo.centro[celda * 3 + 1]! * r;
     const cz = geo.centro[celda * 3 + 2]! * r;
 
-    // La celda más baja de todo el vecindario no necesita falda: la tapan las
+    // La celda más baja de su vecindario no necesita falda: la tapan las
     // paredes de sus vecinas.
     let radioMasBajo = r;
     for (let k = 0; k < lados; k++) {
@@ -72,48 +55,33 @@ function construirMallaTerreno(geo: Geometria, altura: Float32Array): THREE.Buff
     for (let k = 0; k < lados; k++) {
       const a = (celda * MAX_VECINOS + k) * 3;
       const b = (celda * MAX_VECINOS + ((k + 1) % lados)) * 3;
+      const ax = geo.esquinas[a]!, ay = geo.esquinas[a + 1]!, az = geo.esquinas[a + 2]!;
+      const bx = geo.esquinas[b]!, by = geo.esquinas[b + 1]!, bz = geo.esquinas[b + 2]!;
 
-      const ax = geo.esquinas[a]!;
-      const ay = geo.esquinas[a + 1]!;
-      const az = geo.esquinas[a + 2]!;
-      const bx = geo.esquinas[b]!;
-      const by = geo.esquinas[b + 1]!;
-      const bz = geo.esquinas[b + 2]!;
-
-      // Tapa: un abanico de triángulos desde el centro de la celda.
       posiciones.push(cx, cy, cz, ax * r, ay * r, az * r, bx * r, by * r, bz * r);
-      for (let n = 0; n < 3; n++) colores.push(color.r, color.g, color.b);
 
-      // Pared del cantil, hasta la vecina más baja.
       if (radioMasBajo < r) {
         const rb = radioMasBajo;
         posiciones.push(
-          ax * r, ay * r, az * r,
-          ax * rb, ay * rb, az * rb,
-          bx * r, by * r, bz * r,
-          bx * r, by * r, bz * r,
-          ax * rb, ay * rb, az * rb,
-          bx * rb, by * rb, bz * rb,
+          ax * r, ay * r, az * r, ax * rb, ay * rb, az * rb, bx * r, by * r, bz * r,
+          bx * r, by * r, bz * r, ax * rb, ay * rb, az * rb, bx * rb, by * rb, bz * rb,
         );
-        // La pared va un poco más oscura, como una roca en sombra.
-        for (let n = 0; n < 6; n++) colores.push(color.r * 0.62, color.g * 0.58, color.b * 0.55);
       }
     }
+    cuantos[celda] = posiciones.length / 3 - inicio[celda]!;
   }
 
   const malla = new THREE.BufferGeometry();
   malla.setAttribute('position', new THREE.Float32BufferAttribute(posiciones, 3));
-  malla.setAttribute('color', new THREE.Float32BufferAttribute(colores, 3));
+  malla.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(posiciones.length), 3));
   malla.computeVertexNormals();
-  return malla;
+  return { malla, inicio, cuantos };
 }
 
-/** Un puñado de estrellas de fondo, para que la bola se lea como un planeta. */
+/** Estrellas de fondo, colocadas con un generador propio para que no parpadeen. */
 function construirEstrellas(): THREE.Points {
-  const n = 1200;
+  const n = 1400;
   const pos = new Float32Array(n * 3);
-  // Colocadas con un generador propio para que el fondo también sea el mismo
-  // siempre y no parpadee entre recargas.
   let s = 0x9e3779b9;
   const siguiente = () => {
     s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d);
@@ -131,10 +99,7 @@ function construirEstrellas(): THREE.Points {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  return new THREE.Points(
-    g,
-    new THREE.PointsMaterial({ color: 0xbcd0e6, size: 0.055, sizeAttenuation: true }),
-  );
+  return new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbcd0e6, size: 0.055 }));
 }
 
 export class VistaPlaneta {
@@ -142,13 +107,17 @@ export class VistaPlaneta {
   private readonly camara: THREE.PerspectiveCamera;
   private readonly render: THREE.WebGLRenderer;
   private readonly pivote = new THREE.Group();
-  private terreno: THREE.Mesh | null = null;
+  private readonly sol: THREE.DirectionalLight;
 
-  /** Giro acumulado de la cámara y distancia, que es lo que mueve el dedo. */
+  private trozos: Trozos | null = null;
+  private terreno: THREE.Mesh | null = null;
+  private nubes: THREE.InstancedMesh | null = null;
+  private geo: Geometria | null = null;
+  private nivelDibujado = -1;
+
   private giroX = 0.35;
   private giroY = 0.6;
   private distancia = 3.1;
-  private nivelDibujado = -1;
 
   constructor(private readonly lienzo: HTMLCanvasElement) {
     this.render = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true });
@@ -159,48 +128,132 @@ export class VistaPlaneta {
     this.escena.add(this.pivote);
     this.escena.add(construirEstrellas());
 
-    // El sol. En la fase 1b este mismo foco define dónde es de día: la línea de
-    // la noche será dónde deja de llegar, no una fórmula aparte.
-    const sol = new THREE.DirectionalLight(0xfff2dd, 2.4);
-    sol.position.set(4, 2.2, 3);
-    this.escena.add(sol);
-    // Luz de relleno: el azul del cielo por arriba y el rebote del mar por abajo.
-    this.escena.add(new THREE.HemisphereLight(0x93b6e8, 0x1b2a3a, 0.85));
+    // El sol de verdad: se coloca donde la simulación dice que está, así que la
+    // línea de la noche es dónde deja de llegar, no algo pintado encima.
+    this.sol = new THREE.DirectionalLight(0xfff4e2, 2.6);
+    this.escena.add(this.sol);
+    // Relleno: el azul del cielo por arriba, el rebote del mar por abajo. Sin
+    // esto la cara de noche sería un agujero negro y no se vería nada.
+    this.escena.add(new THREE.HemisphereLight(0x8fb2e0, 0x1a2436, 0.8));
 
     this.conectarGestos();
     this.ajustarTamano();
     window.addEventListener('resize', () => this.ajustarTamano());
   }
 
-  /** Rehace el terreno cuando llega una instantánea con alturas nuevas. */
-  actualizar(nivel: number, altura: Float32Array): void {
-    if (this.nivelDibujado === nivel && this.terreno) return;
+  actualizar(inst: {
+    tick: number;
+    nivel: number;
+    altura: Float32Array;
+    temperatura: Float32Array;
+    aguaSuelo: Int32Array;
+    humedadAire: Int32Array;
+    flujoAgua: Int32Array;
+    lluvia: Int32Array;
+  }): void {
+    if (this.nivelDibujado !== inst.nivel) this.construirMundo(inst.nivel, inst.altura);
+    if (!this.trozos || !this.geo || !this.nubes) return;
 
+    // --- Repintar cada celda con lo que dicen sus números ---------------------
+    const colores = this.trozos.malla.getAttribute('color') as THREE.BufferAttribute;
+    const array = colores.array as Float32Array;
+    const tinte: [number, number, number] = [0, 0, 0];
+
+    for (let celda = 0; celda < this.geo.nCeldas; celda++) {
+      colorDeCelda(
+        inst.altura[celda]!,
+        inst.temperatura[celda]!,
+        inst.aguaSuelo[celda]!,
+        inst.flujoAgua[celda]!,
+        tinte,
+      );
+      // Las paredes de los cantiles van más oscuras, como roca en sombra.
+      const desde = this.trozos.inicio[celda]!;
+      const hasta = desde + this.trozos.cuantos[celda]!;
+      const tapa = this.geo.nVecinos[celda]! * 3;
+      for (let v = desde; v < hasta; v++) {
+        const enSombra = v - desde >= tapa;
+        const k = enSombra ? 0.58 : 1;
+        array[v * 3] = tinte[0] * k;
+        array[v * 3 + 1] = tinte[1] * k;
+        array[v * 3 + 2] = tinte[2] * k;
+      }
+    }
+    colores.needsUpdate = true;
+
+    // --- Las nubes son la humedad del aire, no un adorno ---------------------
+    //
+    // Se dibuja nube DONDE ESTÁ LLOVIENDO. Ni por el agua que lleva el aire ni
+    // por la humedad relativa: las dos salían casi iguales en todas partes —la
+    // regla de lluvia deja el aire siempre al borde de saturarse— y el planeta
+    // acababa tapado de blanco de polo a polo. La lluvia sí distingue, y además
+    // es lo que de verdad quieres ver: si hay nube, ahí está cayendo agua.
+    const matriz = new THREE.Matrix4();
+    const vacio = new THREE.Vector3(0, 0, 0);
+    const sinRotar = new THREE.Quaternion();
+    const escala = new THREE.Vector3();
+    const sitio = new THREE.Vector3();
+    let dibujadas = 0;
+    for (let celda = 0; celda < this.geo.nCeldas; celda++) {
+      // Solo la lluvia fuerte. Medido: con el umbral bajo llueve en el 85 % del
+      // planeta a la vez —una llovizna constante en todas partes, que no es
+      // tiempo meteorológico— y salían nubes hasta en el último rincón. Con 45
+      // se ven solo los frentes de verdad, que son un 14 % de las celdas.
+      const cae = inst.lluvia[celda]!;
+      if (cae < 45) continue;
+      const tamano = 0.016 + Math.min(0.022, (cae - 45) * 0.0004);
+      const r = RADIO_PLANETA * 1.055;
+      sitio.set(
+        this.geo.centro[celda * 3]! * r,
+        this.geo.centro[celda * 3 + 1]! * r,
+        this.geo.centro[celda * 3 + 2]! * r,
+      );
+      escala.set(tamano, tamano * 0.45, tamano);
+      matriz.compose(sitio, sinRotar, escala);
+      this.nubes.setMatrixAt(dibujadas++, matriz);
+    }
+    // Las instancias sobrantes se aparcan en el centro con tamaño cero.
+    matriz.compose(vacio, sinRotar, new THREE.Vector3(0, 0, 0));
+    for (let i = dibujadas; i < this.geo.nCeldas; i++) this.nubes.setMatrixAt(i, matriz);
+    this.nubes.instanceMatrix.needsUpdate = true;
+
+    // --- El sol, donde toca ---------------------------------------------------
+    const d = direccionDelSol(inst.tick);
+    this.sol.position.set(d[0] * 12, d[1] * 12, d[2] * 12);
+  }
+
+  private construirMundo(nivel: number, altura: Float32Array): void {
     const geo = construirGeometria(nivel);
+    this.geo = geo;
+
     if (this.terreno) {
       this.terreno.geometry.dispose();
       this.pivote.remove(this.terreno);
     }
-
+    this.trozos = construirMallaTerreno(geo, altura);
     this.terreno = new THREE.Mesh(
-      construirMallaTerreno(geo, altura),
+      this.trozos.malla,
       new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
     );
     this.pivote.add(this.terreno);
 
-    // El océano: una esfera lisa justo al nivel del mar. El efecto de agua
-    // llenando los valles es literalmente eso, una bola azul translúcida.
-    const mar = new THREE.Mesh(
-      new THREE.SphereGeometry(radioDelMar(RADIO_PLANETA), 128, 80),
-      new THREE.MeshLambertMaterial({
-        color: 0x2b79ae,
-        transparent: true,
-        // Translúcido a propósito: así los bajíos se ven turquesa y las fosas
-        // casi negras, y la profundidad se lee sin dibujar nada aparte.
-        opacity: 0.74,
-      }),
+    // El océano: una esfera lisa al nivel del mar. El agua llenando los valles
+    // es literalmente eso, una bola azul translúcida.
+    this.pivote.add(
+      new THREE.Mesh(
+        new THREE.SphereGeometry(radioDelMar(RADIO_PLANETA), 128, 80),
+        new THREE.MeshLambertMaterial({ color: 0x2b79ae, transparent: true, opacity: 0.72 }),
+      ),
     );
-    this.pivote.add(mar);
+
+    if (this.nubes) this.pivote.remove(this.nubes);
+    this.nubes = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(1, 7, 5),
+      new THREE.MeshLambertMaterial({ color: 0xf4f8fd, transparent: true, opacity: 0.42 }),
+      geo.nCeldas,
+    );
+    this.nubes.frustumCulled = false;
+    this.pivote.add(this.nubes);
 
     this.nivelDibujado = nivel;
   }
@@ -224,43 +277,37 @@ export class VistaPlaneta {
     this.camara.updateProjectionMatrix();
   }
 
-  /** Arrastrar para girar el planeta, rueda o pellizco para acercarse. */
   private conectarGestos(): void {
     let arrastrando = false;
     let ultimoX = 0;
     let ultimoY = 0;
     let pellizcoPrevio = 0;
 
-    const empezar = (x: number, y: number) => {
-      arrastrando = true;
-      ultimoX = x;
-      ultimoY = y;
-    };
-    const mover = (x: number, y: number) => {
-      if (!arrastrando) return;
-      this.giroY -= (x - ultimoX) * 0.006;
-      this.giroX += (y - ultimoY) * 0.006;
-      // Sin pasarse de los polos, que da mareo.
-      const tope = 1.45;
-      this.giroX = Math.max(-tope, Math.min(tope, this.giroX));
-      ultimoX = x;
-      ultimoY = y;
-    };
-    const soltar = () => {
-      arrastrando = false;
-    };
     const acercar = (delta: number) => {
       this.distancia = Math.max(1.12, Math.min(9, this.distancia * (1 + delta)));
     };
 
-    this.lienzo.addEventListener('pointerdown', (e) => empezar(e.clientX, e.clientY));
-    this.lienzo.addEventListener('pointermove', (e) => mover(e.clientX, e.clientY));
-    window.addEventListener('pointerup', soltar);
+    this.lienzo.addEventListener('pointerdown', (e) => {
+      arrastrando = true;
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+    });
+    this.lienzo.addEventListener('pointermove', (e) => {
+      if (!arrastrando) return;
+      this.giroY -= (e.clientX - ultimoX) * 0.006;
+      this.giroX += (e.clientY - ultimoY) * 0.006;
+      const tope = 1.45;
+      this.giroX = Math.max(-tope, Math.min(tope, this.giroX));
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+    });
+    window.addEventListener('pointerup', () => {
+      arrastrando = false;
+    });
     this.lienzo.addEventListener('wheel', (e) => {
       e.preventDefault();
       acercar(e.deltaY * 0.0012);
     }, { passive: false });
-
     this.lienzo.addEventListener('touchmove', (e) => {
       if (e.touches.length !== 2) return;
       e.preventDefault();
@@ -275,3 +322,5 @@ export class VistaPlaneta {
     });
   }
 }
+
+export { TEMP_CONGELACION, NIVEL_DEL_MAR };

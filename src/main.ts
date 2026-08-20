@@ -6,7 +6,13 @@
  * frena al mundo ni el mundo frena al dibujo.
  */
 
-import { NIVEL_DEL_MAR, SEMILLA_POR_DEFECTO } from './sim/constants.js';
+import {
+  DIAS_POR_ANO,
+  NIVEL_DEL_MAR,
+  SEMILLA_POR_DEFECTO,
+  TICKS_POR_ANO,
+  TICKS_POR_DIA,
+} from './sim/constants.js';
 import { VistaPlaneta } from './render/planeta.js';
 import type { NoticiaDelWorker, OrdenAlWorker, Velocidad } from './shared/protocolo.js';
 
@@ -40,19 +46,26 @@ worker.onmessage = (evento: MessageEvent<NoticiaDelWorker>) => {
   const noticia = evento.data;
   switch (noticia.tipo) {
     case 'INSTANTANEA': {
-      vista.actualizar(noticia.nivel, noticia.altura);
+      vista.actualizar(noticia);
 
       let tierra = 0;
-      for (let i = 0; i < noticia.altura.length; i++) {
+      let helado = 0;
+      let sumaTemp = 0;
+      let rios = 0;
+      for (let i = 0; i < noticia.nCeldas; i++) {
         if (noticia.altura[i]! >= NIVEL_DEL_MAR) tierra++;
+        if (noticia.temperatura[i]! < 0) helado++;
+        if (noticia.flujoAgua[i]! > 15) rios++;
+        sumaTemp += noticia.temperatura[i]!;
       }
-      let atomos = 0;
-      for (let i = 0; i < noticia.materia.length; i++) atomos += noticia.materia[i]!;
 
-      escribir('celdas', noticia.nCeldas.toLocaleString('es'));
-      escribir('tierra', `${Math.round((tierra / noticia.nCeldas) * 100)} %`);
-      escribir('tick', noticia.tick.toLocaleString('es'));
-      escribir('materia', `${atomos.toLocaleString('es')} átomos`);
+      const dia = Math.floor(noticia.tick / TICKS_POR_DIA);
+      const ano = Math.floor(noticia.tick / TICKS_POR_ANO);
+      escribir('tiempo', `año ${ano}, día ${dia % DIAS_POR_ANO}`);
+      escribir('tierra', `${Math.round((tierra / noticia.nCeldas) * 100)} % de ${noticia.nCeldas}`);
+      escribir('temperatura', `${(sumaTemp / noticia.nCeldas).toFixed(1)}°`);
+      escribir('hielo', `${Math.round((helado / noticia.nCeldas) * 100)} %`);
+      escribir('rios', String(rios));
       document.body.classList.add('listo');
       break;
     }
@@ -60,12 +73,12 @@ worker.onmessage = (evento: MessageEvent<NoticiaDelWorker>) => {
       // Nunca se recorta en silencio: si no se pudieron correr todos los ticks
       // transcurridos, se dice con los dos números a la vista.
       escribir(
-        'tick',
-        `${noticia.corridos.toLocaleString('es')} de ${noticia.transcurridos.toLocaleString('es')}`,
+        'tiempo',
+        `${noticia.corridos.toLocaleString('es')} de ${noticia.transcurridos.toLocaleString('es')} ticks`,
       );
       break;
     case 'ERROR':
-      escribir('tick', `error: ${noticia.mensaje}`);
+      escribir('tiempo', `error: ${noticia.mensaje}`);
       break;
   }
 };

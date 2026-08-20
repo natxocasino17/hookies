@@ -9,8 +9,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { celdasDelNivel, construirGeometria } from '../src/sim/geodesica.js';
-import { MAX_VECINOS, NIVEL_SUBDIVISION } from '../src/sim/constants.js';
-import { crearEstado } from '../src/sim/estado.js';
+import {
+  MAX_VECINOS,
+  NIVEL_SUBDIVISION,
+  TICKS_POR_ANO,
+  TICKS_POR_DIA,
+} from '../src/sim/constants.js';
+import { crearEstado, geometriaDe } from '../src/sim/estado.js';
+import { avanzarUnTick } from '../src/sim/tick.js';
+import { aguaTotal, direccionDelSol } from '../src/sim/clima.js';
 import { fraccionDeTierra } from '../src/sim/terreno.js';
 
 const geo = construirGeometria(NIVEL_SUBDIVISION);
@@ -117,5 +124,61 @@ describe('el terreno', () => {
       expect(fraccion, `semilla ${semilla}: ${(fraccion * 100).toFixed(0)} % de tierra`)
         .toBeLessThan(0.75);
     }
+  });
+});
+
+describe('el clima', () => {
+  it('el agua del planeta no cambia jamás', () => {
+    // El ciclo del agua mueve enteros de un sitio a otro: lo que se evapora sale
+    // de una celda y entra en otra. Si esto falla, hay agua naciendo o
+    // desapareciendo, y cualquier conclusión sobre el mundo deja de valer.
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    const inicial = aguaTotal(estado);
+    for (let i = 0; i < 8_000; i++) avanzarUnTick(estado, geo);
+    expect(aguaTotal(estado)).toBe(inicial);
+  });
+
+  it('ninguna celda queda con agua negativa', () => {
+    const estado = crearEstado(7);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < 5000; i++) avanzarUnTick(estado, geo);
+    for (let i = 0; i < estado.nCeldas; i++) {
+      expect(estado.aguaSuelo[i]!, `suelo de la celda ${i}`).toBeGreaterThanOrEqual(0);
+      expect(estado.humedadAire[i]!, `aire de la celda ${i}`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('el sol da una vuelta al día y sube y baja con el año', () => {
+    // Las estaciones no son una regla: son la latitud donde el sol cae a plomo
+    // subiendo y bajando entre los trópicos.
+    const mediodia = direccionDelSol(0);
+    const medianoche = direccionDelSol(TICKS_POR_DIA / 2);
+    // Medio día después, el sol está justo al otro lado.
+    expect(mediodia[0]! * medianoche[0]! + mediodia[2]! * medianoche[2]!).toBeLessThan(0);
+
+    // A lo largo del año el sol cruza de un hemisferio al otro.
+    const alturas = [0, 0.25, 0.5, 0.75].map((f) => direccionDelSol(Math.floor(f * TICKS_POR_ANO))[1]!);
+    expect(Math.max(...alturas)).toBeGreaterThan(0.3);
+    expect(Math.min(...alturas)).toBeLessThan(-0.3);
+  });
+
+  it('el ecuador es más caliente que los polos, y hay hielo', () => {
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    // Un año basta: el gradiente ecuador-polos ya está formado.
+    for (let i = 0; i < TICKS_POR_ANO; i++) avanzarUnTick(estado, geo);
+
+    const todas = [...Array(estado.nCeldas).keys()];
+    const media = (celdas: number[]) =>
+      celdas.reduce((s, i) => s + estado.temperatura[i]!, 0) / celdas.length;
+    const ecuador = todas.filter((i) => Math.abs(geo.centro[i * 3 + 1]!) < 0.2);
+    const polos = todas.filter((i) => Math.abs(geo.centro[i * 3 + 1]!) > 0.9);
+
+    expect(media(ecuador)).toBeGreaterThan(media(polos) + 20);
+    // Casquetes helados, pero no una bola de nieve.
+    const helado = todas.filter((i) => estado.temperatura[i]! < 0).length / estado.nCeldas;
+    expect(helado).toBeGreaterThan(0.05);
+    expect(helado).toBeLessThan(0.6);
   });
 });

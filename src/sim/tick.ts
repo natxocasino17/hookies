@@ -5,15 +5,17 @@
  * describir la intención de una criatura (CLAUDE.md §1.1): no hay "buscar
  * comida" ni "huir", hay fuerzas, difusión y costes.
  *
- * Fase 1a: lo único que ocurre es que la materia se reparte entre celdas
- * vecinas del planeta. Es poco, pero es física real y exactamente
- * conservativa, así que el test de masa está probando algo de verdad.
+ * Fase 1b: la materia se reparte entre celdas vecinas, y el planeta gira bajo
+ * el sol — de ahí salen el día, las estaciones, la temperatura y el ciclo del
+ * agua. Nada de eso está escrito como regla: son consecuencias de que la bola
+ * gire con el eje torcido.
  */
 
 import { DIFUSION_MATERIA_DIVISOR, MAX_VECINOS } from './constants.js';
 import type { EstadoMundo } from './estado.js';
 import type { Geometria } from './geodesica.js';
 import { siguienteU32 } from './rng.js';
+import { avanzarElClima } from './clima.js';
 
 /**
  * Reparte materia entre celdas vecinas del planeta.
@@ -55,5 +57,6 @@ function difundirMateria(estado: EstadoMundo, geo: Geometria, alReves: boolean):
 export function avanzarUnTick(estado: EstadoMundo, geo: Geometria): void {
   const alReves = (siguienteU32(estado.rng) & 1) === 1;
   difundirMateria(estado, geo, alReves);
+  avanzarElClima(estado, geo, alReves);
   estado.tick += 1;
 }

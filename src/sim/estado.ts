@@ -10,7 +10,15 @@
  * al cargar y no ocupa sitio en el archivo.
  */
 
-import { MATERIA_INICIAL_POR_CELDA, NIVEL_SUBDIVISION, SEMILLA_POR_DEFECTO } from './constants.js';
+import {
+  AGUA_INICIAL_OCEANO,
+  AGUA_INICIAL_SUELO,
+  MATERIA_INICIAL_POR_CELDA,
+  NIVEL_DEL_MAR,
+  NIVEL_SUBDIVISION,
+  SEMILLA_POR_DEFECTO,
+  TEMP_INICIAL,
+} from './constants.js';
 import { crearRng, RNG_PALABRAS, type EstadoRng } from './rng.js';
 import { MARCA_ARCHIVO, migrar, VERSION_ESQUEMA } from './esquema.js';
 import { celdasDelNivel, construirGeometria, type Geometria } from './geodesica.js';
@@ -50,6 +58,34 @@ export interface EstadoMundo {
    */
   materia: Int32Array;
 
+  /** Temperatura de cada celda, en grados del mundo (0 = se congela el agua). */
+  temperatura: Float32Array;
+
+  /**
+   * Agua del suelo de cada celda, en gotas enteras. En las celdas de mar es el
+   * océano; en las de tierra, lo que hay empapado o encharcado.
+   *
+   * Enteros por lo mismo que la materia (D7): el ciclo del agua tiene que
+   * conservar exactamente, y con decimales cada evaporación perdería un pelo.
+   */
+  aguaSuelo: Int32Array;
+
+  /** Agua que lleva el aire encima de cada celda. Cuando sobra, llueve. */
+  humedadAire: Int32Array;
+
+  /**
+   * Agua que pasó por esta celda camino de una más baja, en el último tick.
+   * No es un campo que gobierne nada: es la cuenta de la que salen los ríos.
+   */
+  flujoAgua: Int32Array;
+
+  /**
+   * Agua que cayó del cielo sobre esta celda en el último tick.
+   * Tampoco gobierna nada: es de donde salen las nubes que se dibujan. Si ves
+   * una nube es porque ahí está lloviendo, no porque quede bonito.
+   */
+  lluvia: Int32Array;
+
   /** Contabilidad de energía: cuánta entró (sol) y cuánta salió (disipación). */
   energiaEntrada: number;
   energiaSalida: number;
@@ -57,6 +93,9 @@ export interface EstadoMundo {
 
 /** Bytes de cabecera antes de los datos de las celdas. */
 const BYTES_CABECERA = 60;
+
+/** Campos por celda que van al archivo: materia, altura, temperatura, agua, humedad. */
+const CAMPOS_POR_CELDA = 5;
 
 /** Crea un mundo nuevo. Determinista: la misma semilla da siempre el mismo mundo. */
 export function crearEstado(
@@ -67,14 +106,30 @@ export function crearEstado(
   const materia = new Int32Array(geo.nCeldas);
   materia.fill(MATERIA_INICIAL_POR_CELDA);
 
+  const altura = generarAltura(geo, semilla);
+  const temperatura = new Float32Array(geo.nCeldas);
+  temperatura.fill(TEMP_INICIAL);
+
+  // El agua empieza donde corresponde: casi toda en el mar, un poco en la
+  // tierra. A partir de aquí solo se mueve; no aparece ni desaparece nunca.
+  const aguaSuelo = new Int32Array(geo.nCeldas);
+  for (let i = 0; i < geo.nCeldas; i++) {
+    aguaSuelo[i] = altura[i]! < NIVEL_DEL_MAR ? AGUA_INICIAL_OCEANO : AGUA_INICIAL_SUELO;
+  }
+
   return {
     semilla,
     tick: 0,
     rng: crearRng(semilla),
     nivel,
     nCeldas: geo.nCeldas,
-    altura: generarAltura(geo, semilla),
+    altura,
     materia,
+    temperatura,
+    aguaSuelo,
+    humedadAire: new Int32Array(geo.nCeldas),
+    flujoAgua: new Int32Array(geo.nCeldas),
+    lluvia: new Int32Array(geo.nCeldas),
     energiaEntrada: 0,
     energiaSalida: 0,
   };
@@ -94,7 +149,7 @@ export function materiaTotal(estado: EstadoMundo): number {
 /** Convierte el mundo entero a bytes, listo para guardar o exportar a archivo. */
 export function serializar(estado: EstadoMundo): Uint8Array {
   const n = estado.nCeldas;
-  const bytes = new Uint8Array(BYTES_CABECERA + n * 8);
+  const bytes = new Uint8Array(BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA);
   const vista = new DataView(bytes.buffer);
 
   vista.setUint32(0, MARCA_ARCHIVO, true);
@@ -112,9 +167,14 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   vista.setFloat64(44, estado.energiaEntrada, true);
   vista.setFloat64(52, estado.energiaSalida, true);
 
+  // El caudal y la lluvia no se guardan: se recalculan enteros en cada tick.
   for (let i = 0; i < n; i++) {
-    vista.setInt32(BYTES_CABECERA + i * 4, estado.materia[i]!, true);
-    vista.setFloat32(BYTES_CABECERA + n * 4 + i * 4, estado.altura[i]!, true);
+    const c = BYTES_CABECERA + i * 4;
+    vista.setInt32(c, estado.materia[i]!, true);
+    vista.setFloat32(c + n * 4, estado.altura[i]!, true);
+    vista.setFloat32(c + n * 8, estado.temperatura[i]!, true);
+    vista.setInt32(c + n * 12, estado.aguaSuelo[i]!, true);
+    vista.setInt32(c + n * 16, estado.humedadAire[i]!, true);
   }
 
   return bytes;
@@ -149,7 +209,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   if (n !== celdasDelNivel(nivel)) {
     throw new Error(`El archivo dice ${n} celdas, pero el nivel ${nivel} tiene ${celdasDelNivel(nivel)}.`);
   }
-  if (bytes.byteLength < BYTES_CABECERA + n * 8) {
+  if (bytes.byteLength < BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA) {
     throw new Error('El archivo del mundo está incompleto o cortado.');
   }
 
@@ -160,9 +220,16 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
 
   const materia = new Int32Array(n);
   const altura = new Float32Array(n);
+  const temperatura = new Float32Array(n);
+  const aguaSuelo = new Int32Array(n);
+  const humedadAire = new Int32Array(n);
   for (let i = 0; i < n; i++) {
-    materia[i] = vista.getInt32(BYTES_CABECERA + i * 4, true);
-    altura[i] = vista.getFloat32(BYTES_CABECERA + n * 4 + i * 4, true);
+    const c = BYTES_CABECERA + i * 4;
+    materia[i] = vista.getInt32(c, true);
+    altura[i] = vista.getFloat32(c + n * 4, true);
+    temperatura[i] = vista.getFloat32(c + n * 8, true);
+    aguaSuelo[i] = vista.getInt32(c + n * 12, true);
+    humedadAire[i] = vista.getInt32(c + n * 16, true);
   }
 
   return {
@@ -173,6 +240,11 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     nCeldas: n,
     altura,
     materia,
+    temperatura,
+    aguaSuelo,
+    humedadAire,
+    flujoAgua: new Int32Array(n),
+    lluvia: new Int32Array(n),
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),
   };

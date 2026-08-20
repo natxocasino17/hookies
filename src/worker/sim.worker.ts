@@ -32,9 +32,20 @@ function enviarInstantanea(): void {
       nivel: i.nivel,
       nCeldas: i.nCeldas,
       altura: i.altura,
-      materia: i.materia,
+      temperatura: i.temperatura,
+      aguaSuelo: i.aguaSuelo,
+      humedadAire: i.humedadAire,
+      flujoAgua: i.flujoAgua,
+      lluvia: i.lluvia,
     },
-    [i.altura.buffer, i.materia.buffer],
+    [
+      i.altura.buffer,
+      i.temperatura.buffer,
+      i.aguaSuelo.buffer,
+      i.humedadAire.buffer,
+      i.flujoAgua.buffer,
+      i.lluvia.buffer,
+    ],
   );
   contar({ tipo: 'TELEMETRIA', ultima: mundo.telemetria.ultima });
 }
