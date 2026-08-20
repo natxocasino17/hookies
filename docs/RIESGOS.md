@@ -367,6 +367,22 @@ hacer algo?*
 
 ---
 
+## 14. El archivo guardado crece con el tope de población, no con lo que vive
+
+Descubierto al medir, en la fase 3. El genoma son 8.192 bytes por criatura y
+`serializar` escribe **todas** las ranuras, vivas o no. Con el tope en 8.000 el
+archivo era de 64 MB con 500 criaturas vivas dentro. Con el tope en 3.000 son
+24 MB, y sigue siendo casi todo hueco vacío.
+
+Ahora da igual: la persistencia es de la fase 6 y los mundos de antes son
+desechables (decisión D8). Pero **antes de la fase 6 hay que escribir solo las
+ranuras ocupadas**, o meter un mundo en IndexedDB va a ser un problema. No es
+difícil —una lista de ranuras vivas y sus datos— pero cambia el formato, así que
+va con su migración y su subida de versión.
+
+Lo que NO se debe hacer para arreglarlo: acortar el genoma. Que el genoma sea
+largo es la decisión D2 y es lo que deja sitio para que quepa un cerebro.
+
 ## 13. Lo que sí me parece sólido
 
 Para que la lista no parezca una queja general: la arquitectura (worker + tick

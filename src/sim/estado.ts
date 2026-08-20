@@ -14,6 +14,8 @@ import {
   AGUA_INICIAL_OCEANO,
   AGUA_INICIAL_SUELO,
   ESCALA_ENERGIA_QUIMICA,
+  MAX_CADENA_GENOMA,
+  MAX_CRIATURAS,
   N_DIMEROS,
   N_TIPOS_ATOMO,
   TOP_N_MOLECULAS,
@@ -32,6 +34,7 @@ import { celdasDelNivel, construirGeometria, type Geometria } from './geodesica.
 import { generarAltura } from './terreno.js';
 import { materiaEnPlantas, sembrarPrimerasPlantas } from './plantas.js';
 import { sembrarLaSopa } from './quimica.js';
+import { materiaEnCriaturas } from './criaturas.js';
 
 export interface EstadoMundo {
   /** Semilla con la que nació este mundo. Junto con las intervenciones, lo define entero. */
@@ -120,6 +123,16 @@ export interface EstadoMundo {
   plantaGenoma: Uint8Array;
   /** Cuántas plantas hay en cada celda, para no amontonar infinitas. */
   plantasEnCelda: Int32Array;
+
+  /**
+   * Qué plantas hay en cada celda, con el mismo truco que el de las criaturas:
+   * `cabezaPlantaEnCelda[celda]` es la primera y `siguientePlantaEnCelda[p]` la
+   * de detrás, en orden de ranura. Morder busca la planta más grande de la
+   * celda, y recorrer las 16.000 ranuras para encontrarla era el bucle más caro
+   * del tick. Tampoco se guarda: se deduce de `plantaCelda`.
+   */
+  cabezaPlantaEnCelda: Int32Array;
+  siguientePlantaEnCelda: Int32Array;
   /** Por dónde va la búsqueda de huecos libres. Se guarda para que sea reproducible. */
   cursorPlanta: number;
   /** Cuentas del último tick, para la telemetría y la pantalla. */
@@ -147,6 +160,65 @@ export interface EstadoMundo {
   /** Uniones que ocurrieron en el último tick. Solo para la telemetría. */
   reaccionesEsteTick: number;
 
+  // --- Los cuerpos ----------------------------------------------------------
+  //
+  /** En qué celda está cada criatura. -1 significa hueco libre. */
+  criaturaCelda: Int32Array;
+  /** Materia de su cuerpo, en enteros. Sale del mundo y vuelve al mundo. */
+  criaturaMateria: Int32Array;
+  /** Energía. Baja siempre y sube al comer. Es la única recompensa que existe. */
+  criaturaEnergia: Float32Array;
+  /** Daño acumulado. Sube al recibir mordiscos o pasar frío o calor. */
+  criaturaDano: Float32Array;
+  /** Ticks vividos. */
+  criaturaEdad: Int32Array;
+  /** Temperatura del cuerpo, peleando con la del entorno. */
+  criaturaTemperatura: Float32Array;
+  /**
+   * De qué linaje viene. Se hereda tal cual de madre a cría.
+   *
+   * NO es un campo "especie" que gobierne nada: nadie consulta este número para
+   * decidir con quién se puede cruzar. Sirve solo para contar a posteriori
+   * cuántas ramas quedan vivas. Las especies de verdad salen del parecido entre
+   * genomas, que se mide, no se declara.
+   */
+  criaturaLinaje: Int32Array;
+  /** Genoma de cada criatura: MAX_CADENA_GENOMA átomos seguidos por criatura. */
+  criaturaGenoma: Uint8Array;
+
+  /**
+   * Quién está en cada celda, para no tener que recorrer todas las ranuras cada
+   * vez que alguien muerde.
+   *
+   * `cabezaEnCelda[celda]` es la primera criatura de esa celda y
+   * `siguienteEnCelda[c]` la que va detrás; -1 cierra la lista. Las listas van
+   * **siempre en orden de ranura**, y eso importa por dos razones: morder elige
+   * a la primera de la celda, así que el orden decide a quién le toca; y como el
+   * orden solo depende de qué ranuras están en la celda, el índice se puede
+   * reconstruir al cargar un mundo y sale idéntico. Por eso no va en el archivo:
+   * no es estado, es una consecuencia de `criaturaCelda`.
+   */
+  cabezaEnCelda: Int32Array;
+  siguienteEnCelda: Int32Array;
+  /** Por dónde va la búsqueda de huecos. Se guarda, o cargar cambiaría el futuro. */
+  cursorCriatura: number;
+  /** Número que se le da al próximo linaje que se funde. */
+  siguienteLinaje: number;
+
+  /** Materia de cuerpos muertos tirada en cada celda. Se pudre y vuelve al suelo. */
+  carrona: Int32Array;
+  /** Ticks seguidos que lleva cada celda con un ciclo autocatalítico fuerte. */
+  constanciaDelCiclo: Int32Array;
+
+  /** Cuentas del último tick, para la telemetría y la pantalla. */
+  criaturasVivas: number;
+  nacimientosEsteTick: number;
+  muertesEsteTick: number;
+  senalesEsteTick: number;
+  edadMediaDeMuerte: number;
+  /** Si alguna vez se alcanzó el tope de seguridad. Nunca se recorta en silencio. */
+  topeDePoblacionTocado: boolean;
+
   /**
    * Memoria de trabajo del arrastre por el viento.
    *
@@ -173,12 +245,71 @@ export interface EstadoMundo {
 }
 
 /** Bytes de cabecera antes de los datos de las celdas. */
-const BYTES_CABECERA = 64;
+const BYTES_CABECERA = 72;
+
+/** Un índice por celda recién estrenado: nadie en ninguna parte. */
+function cabezaVacia(nCeldas: number): Int32Array {
+  const a = new Int32Array(nCeldas);
+  a.fill(-1);
+  return a;
+}
+
+/** Los enlaces "quién va detrás", todos cerrados. */
+function listaVacia(): Int32Array {
+  const a = new Int32Array(MAX_CRIATURAS);
+  a.fill(-1);
+  return a;
+}
+
+/** Lo mismo para las plantas. */
+function listaPlantasVacia(): Int32Array {
+  const a = new Int32Array(MAX_PLANTAS);
+  a.fill(-1);
+  return a;
+}
+
+/**
+ * Vuelve a armar el índice de quién está en cada celda a partir de las
+ * posiciones. Recorrer las ranuras de menor a mayor y meter cada una al final
+ * de su celda deja las listas en orden de ranura, que es justo el orden que
+ * mantienen `entrarEnLaCelda` y `salirDeLaCelda` mientras el mundo corre. Por
+ * eso cargar un mundo guardado no cambia su futuro.
+ */
+export function reconstruirIndiceDeCeldas(estado: EstadoMundo): void {
+  estado.cabezaEnCelda.fill(-1);
+  estado.siguienteEnCelda.fill(-1);
+  const cola = new Int32Array(estado.cabezaEnCelda.length);
+  cola.fill(-1);
+  for (let c = 0; c < MAX_CRIATURAS; c++) {
+    const celda = estado.criaturaCelda[c]!;
+    if (celda < 0) continue;
+    const ultima = cola[celda]!;
+    if (ultima < 0) estado.cabezaEnCelda[celda] = c;
+    else estado.siguienteEnCelda[ultima] = c;
+    cola[celda] = c;
+  }
+
+  estado.cabezaPlantaEnCelda.fill(-1);
+  estado.siguientePlantaEnCelda.fill(-1);
+  cola.fill(-1);
+  for (let p = 0; p < MAX_PLANTAS; p++) {
+    const celda = estado.plantaCelda[p]!;
+    if (celda < 0) continue;
+    const ultima = cola[celda]!;
+    if (ultima < 0) estado.cabezaPlantaEnCelda[celda] = p;
+    else estado.siguientePlantaEnCelda[ultima] = p;
+    cola[celda] = p;
+  }
+}
 
 /** Campos por celda que van al archivo: materia, altura, temperatura, agua, humedad. */
 const CAMPOS_POR_CELDA = 5;
 /** Bytes por planta: celda, masa, edad y fruto en enteros, más sus genes. */
 const BYTES_POR_PLANTA = 16 + GENES_PLANTA;
+/** Bytes por criatura: seis campos de cuatro bytes más su genoma. */
+const BYTES_POR_CRIATURA = 24 + MAX_CADENA_GENOMA;
+/** Bytes por celda de las cosas de los cuerpos: carroña y constancia del ciclo. */
+const BYTES_CUERPOS_POR_CELDA = 8;
 /** Bytes por celda de la sopa: átomos sueltos más las moléculas con su cantidad. */
 const BYTES_SOPA_POR_CELDA = N_TIPOS_ATOMO * 4 + N_DIMEROS * 4 + TOP_N_MOLECULAS * 8;
 
@@ -204,6 +335,8 @@ export function crearEstado(
 
   const plantaCelda = new Int32Array(geo.nCeldas > 0 ? MAX_PLANTAS : 0);
   plantaCelda.fill(-1);
+  const criaturaCelda = new Int32Array(MAX_CRIATURAS);
+  criaturaCelda.fill(-1);
 
   const estado: EstadoMundo = {
     semilla,
@@ -225,6 +358,8 @@ export function crearEstado(
     plantaFruto: new Int32Array(MAX_PLANTAS),
     plantaGenoma: new Uint8Array(MAX_PLANTAS * GENES_PLANTA),
     plantasEnCelda: new Int32Array(geo.nCeldas),
+    cabezaPlantaEnCelda: cabezaVacia(geo.nCeldas),
+    siguientePlantaEnCelda: listaPlantasVacia(),
     cursorPlanta: 0,
     plantasVivas: 0,
     masaVegetal: 0,
@@ -234,6 +369,26 @@ export function crearEstado(
     sopaCantidad: new Int32Array(geo.nCeldas * TOP_N_MOLECULAS),
     escalaEnergiaQuimica: ESCALA_ENERGIA_QUIMICA,
     reaccionesEsteTick: 0,
+    criaturaCelda,
+    criaturaMateria: new Int32Array(MAX_CRIATURAS),
+    criaturaEnergia: new Float32Array(MAX_CRIATURAS),
+    criaturaDano: new Float32Array(MAX_CRIATURAS),
+    criaturaEdad: new Int32Array(MAX_CRIATURAS),
+    criaturaTemperatura: new Float32Array(MAX_CRIATURAS),
+    criaturaLinaje: new Int32Array(MAX_CRIATURAS),
+    criaturaGenoma: new Uint8Array(MAX_CRIATURAS * MAX_CADENA_GENOMA),
+    cabezaEnCelda: cabezaVacia(geo.nCeldas),
+    siguienteEnCelda: listaVacia(),
+    cursorCriatura: 0,
+    siguienteLinaje: 1,
+    carrona: new Int32Array(geo.nCeldas),
+    constanciaDelCiclo: new Int32Array(geo.nCeldas),
+    criaturasVivas: 0,
+    nacimientosEsteTick: 0,
+    muertesEsteTick: 0,
+    senalesEsteTick: 0,
+    edadMediaDeMuerte: 0,
+    topeDePoblacionTocado: false,
     copiaEnteros: new Int32Array(geo.nCeldas),
     copiaDecimales: new Float32Array(geo.nCeldas),
     energiaEntrada: 0,
@@ -258,16 +413,21 @@ export function materiaTotal(estado: EstadoMundo): number {
   let total = 0;
   const m = estado.materia;
   for (let i = 0; i < m.length; i++) total += m[i]!;
-  // La materia que está dentro de una planta sigue siendo materia del mundo:
-  // salió del suelo y volverá a él cuando la planta muera.
-  return total + materiaEnPlantas(estado);
+  // La materia que está dentro de una planta o de un cuerpo sigue siendo materia
+  // del mundo: salió del suelo y volverá a él al morir. La carroña también.
+  return total + materiaEnPlantas(estado) + materiaEnCriaturas(estado);
 }
 
 /** Convierte el mundo entero a bytes, listo para guardar o exportar a archivo. */
 export function serializar(estado: EstadoMundo): Uint8Array {
   const n = estado.nCeldas;
   const bytes = new Uint8Array(
-    BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA + MAX_PLANTAS * BYTES_POR_PLANTA + n * BYTES_SOPA_POR_CELDA,
+    BYTES_CABECERA +
+      n * 4 * CAMPOS_POR_CELDA +
+      MAX_PLANTAS * BYTES_POR_PLANTA +
+      n * BYTES_SOPA_POR_CELDA +
+      MAX_CRIATURAS * BYTES_POR_CRIATURA +
+      n * BYTES_CUERPOS_POR_CELDA,
   );
   const vista = new DataView(bytes.buffer);
 
@@ -288,6 +448,8 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   // Sin esto, cargar un mundo cambiaba su futuro: la búsqueda de huecos libres
   // para las semillas empezaba desde cero y las plantas caían en otro sitio.
   vista.setUint32(60, estado.cursorPlanta, true);
+  vista.setUint32(64, estado.cursorCriatura, true);
+  vista.setUint32(68, estado.siguienteLinaje, true);
 
   // El caudal y la lluvia no se guardan: se recalculan enteros en cada tick.
   for (let i = 0; i < n; i++) {
@@ -321,6 +483,24 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   for (let i = 0; i < n * TOP_N_MOLECULAS; i++) {
     vista.setInt32(moleculas + i * 8, estado.sopaMolecula[i]!, true);
     vista.setInt32(moleculas + i * 8 + 4, estado.sopaCantidad[i]!, true);
+  }
+
+  const cuerpos = moleculas + n * TOP_N_MOLECULAS * 8;
+  for (let c = 0; c < MAX_CRIATURAS; c++) {
+    const p = cuerpos + c * 24;
+    vista.setInt32(p, estado.criaturaCelda[c]!, true);
+    vista.setInt32(p + 4, estado.criaturaMateria[c]!, true);
+    vista.setFloat32(p + 8, estado.criaturaEnergia[c]!, true);
+    vista.setFloat32(p + 12, estado.criaturaDano[c]!, true);
+    vista.setInt32(p + 16, estado.criaturaEdad[c]!, true);
+    vista.setInt32(p + 20, estado.criaturaLinaje[c]!, true);
+  }
+  const temperaturas = cuerpos + MAX_CRIATURAS * 24;
+  bytes.set(estado.criaturaGenoma, temperaturas);
+  const celdasCuerpo = temperaturas + MAX_CRIATURAS * MAX_CADENA_GENOMA;
+  for (let i = 0; i < n; i++) {
+    vista.setInt32(celdasCuerpo + i * 4, estado.carrona[i]!, true);
+    vista.setInt32(celdasCuerpo + n * 4 + i * 4, estado.constanciaDelCiclo[i]!, true);
   }
 
   return bytes;
@@ -357,7 +537,12 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   }
   if (
     bytes.byteLength <
-    BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA + MAX_PLANTAS * BYTES_POR_PLANTA + n * BYTES_SOPA_POR_CELDA
+    BYTES_CABECERA +
+      n * 4 * CAMPOS_POR_CELDA +
+      MAX_PLANTAS * BYTES_POR_PLANTA +
+      n * BYTES_SOPA_POR_CELDA +
+      MAX_CRIATURAS * BYTES_POR_CRIATURA +
+      n * BYTES_CUERPOS_POR_CELDA
   ) {
     throw new Error('El archivo del mundo está incompleto o cortado.');
   }
@@ -423,7 +608,42 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     sopaCantidad[i] = vista.getInt32(moleculasEn + i * 8 + 4, true);
   }
 
-  return {
+  const cuerposEn = moleculasEn + n * TOP_N_MOLECULAS * 8;
+  const criaturaCelda = new Int32Array(MAX_CRIATURAS);
+  const criaturaMateria = new Int32Array(MAX_CRIATURAS);
+  const criaturaEnergia = new Float32Array(MAX_CRIATURAS);
+  const criaturaDano = new Float32Array(MAX_CRIATURAS);
+  const criaturaEdad = new Int32Array(MAX_CRIATURAS);
+  const criaturaLinaje = new Int32Array(MAX_CRIATURAS);
+  const criaturaTemperatura = new Float32Array(MAX_CRIATURAS);
+  let criaturasContadas = 0;
+  for (let c = 0; c < MAX_CRIATURAS; c++) {
+    const p = cuerposEn + c * 24;
+    criaturaCelda[c] = vista.getInt32(p, true);
+    criaturaMateria[c] = vista.getInt32(p + 4, true);
+    criaturaEnergia[c] = vista.getFloat32(p + 8, true);
+    criaturaDano[c] = vista.getFloat32(p + 12, true);
+    criaturaEdad[c] = vista.getInt32(p + 16, true);
+    criaturaLinaje[c] = vista.getInt32(p + 20, true);
+    if (criaturaCelda[c]! >= 0) {
+      criaturasContadas++;
+      criaturaTemperatura[c] = temperatura[criaturaCelda[c]!]!;
+    }
+  }
+  const genomaCriaturasEn = cuerposEn + MAX_CRIATURAS * 24;
+  const criaturaGenoma = bytes.slice(
+    genomaCriaturasEn,
+    genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA,
+  );
+  const celdasCuerpoEn = genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA;
+  const carrona = new Int32Array(n);
+  const constanciaDelCiclo = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    carrona[i] = vista.getInt32(celdasCuerpoEn + i * 4, true);
+    constanciaDelCiclo[i] = vista.getInt32(celdasCuerpoEn + n * 4 + i * 4, true);
+  }
+
+  const estado: EstadoMundo = {
     semilla: vista.getUint32(8, true),
     tick: tickAlto * 4294967296 + tickBajo,
     rng,
@@ -443,6 +663,8 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     plantaFruto,
     plantaGenoma,
     plantasEnCelda,
+    cabezaPlantaEnCelda: cabezaVacia(n),
+    siguientePlantaEnCelda: listaPlantasVacia(),
     cursorPlanta: vista.getUint32(60, true),
     plantasVivas: vivas,
     masaVegetal,
@@ -452,11 +674,36 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     sopaCantidad,
     escalaEnergiaQuimica: ESCALA_ENERGIA_QUIMICA,
     reaccionesEsteTick: 0,
+    criaturaCelda,
+    criaturaMateria,
+    criaturaEnergia,
+    criaturaDano,
+    criaturaEdad,
+    criaturaTemperatura,
+    criaturaLinaje,
+    criaturaGenoma,
+    cabezaEnCelda: cabezaVacia(n),
+    siguienteEnCelda: listaVacia(),
+    cursorCriatura: vista.getUint32(64, true),
+    siguienteLinaje: vista.getUint32(68, true),
+    carrona,
+    constanciaDelCiclo,
+    criaturasVivas: criaturasContadas,
+    nacimientosEsteTick: 0,
+    muertesEsteTick: 0,
+    senalesEsteTick: 0,
+    edadMediaDeMuerte: 0,
+    topeDePoblacionTocado: false,
     copiaEnteros: new Int32Array(n),
     copiaDecimales: new Float32Array(n),
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),
   };
+
+  // El índice de quién está en cada celda no se guarda: se deduce de dónde está
+  // cada cuerpo, y sale exactamente igual que estaba.
+  reconstruirIndiceDeCeldas(estado);
+  return estado;
 }
 
 /**

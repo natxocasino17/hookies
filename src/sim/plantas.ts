@@ -124,6 +124,7 @@ export function sembrarPrimerasPlantas(estado: EstadoMundo, geo: Geometria, cuan
     }
 
     estado.plantaCelda[n] = celda;
+    entrarEnLaCelda(estado, n, celda);
     estado.plantaMasa[n] = MASA_DE_SEMILLA;
     estado.plantaEdad[n] = 0;
     estado.plantaFruto[n] = 0;
@@ -131,6 +132,40 @@ export function sembrarPrimerasPlantas(estado: EstadoMundo, geo: Geometria, cuan
     // La materia de la semilla sale del suelo, no de la nada.
     estado.materia[celda] = estado.materia[celda]! - MASA_DE_SEMILLA;
   }
+}
+
+/**
+ * Mete una planta en la lista de su celda, en orden de ranura.
+ *
+ * Las plantas no se mueven, así que esto solo pasa al brotar. El orden importa
+ * poco —quien muerde busca la más grande— salvo para desempatar, y desempatar
+ * por ranura es lo que hacía el recorrido completo de antes.
+ */
+export function entrarEnLaCelda(estado: EstadoMundo, p: number, celda: number): void {
+  let previa = -1;
+  let actual = estado.cabezaPlantaEnCelda[celda]!;
+  while (actual >= 0 && actual < p) {
+    previa = actual;
+    actual = estado.siguientePlantaEnCelda[actual]!;
+  }
+  estado.siguientePlantaEnCelda[p] = actual;
+  if (previa < 0) estado.cabezaPlantaEnCelda[celda] = p;
+  else estado.siguientePlantaEnCelda[previa] = p;
+}
+
+/** La saca de la lista de su celda. */
+function salirDeLaCelda(estado: EstadoMundo, p: number, celda: number): void {
+  let previa = -1;
+  let actual = estado.cabezaPlantaEnCelda[celda]!;
+  while (actual >= 0 && actual !== p) {
+    previa = actual;
+    actual = estado.siguientePlantaEnCelda[actual]!;
+  }
+  if (actual !== p) return;
+  const detras = estado.siguientePlantaEnCelda[p]!;
+  if (previa < 0) estado.cabezaPlantaEnCelda[celda] = detras;
+  else estado.siguientePlantaEnCelda[previa] = detras;
+  estado.siguientePlantaEnCelda[p] = -1;
 }
 
 /** Busca un hueco libre en la lista de plantas. Determinista. */
@@ -154,6 +189,7 @@ function morir(estado: EstadoMundo, planta: number): void {
   estado.materia[celda] = estado.materia[celda]! + estado.plantaMasa[planta]! + estado.plantaFruto[planta]!;
   estado.plantaMasa[planta] = 0;
   estado.plantaFruto[planta] = 0;
+  salirDeLaCelda(estado, planta, celda);
   estado.plantaCelda[planta] = -1;
   estado.plantasEnCelda[celda] = estado.plantasEnCelda[celda]! - 1;
 }
@@ -287,6 +323,7 @@ function sembrar(estado: EstadoMundo, geo: Geometria, madre: number, celdaMadre:
   }
 
   estado.plantaCelda[hija] = destino;
+  entrarEnLaCelda(estado, hija, destino);
   estado.plantaMasa[hija] = MASA_DE_SEMILLA;
   estado.plantaEdad[hija] = 0;
   estado.plantaFruto[hija] = 0;

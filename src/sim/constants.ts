@@ -745,6 +745,233 @@ export const DETECTAR_CICLOS_CADA = 512;
 /** Reacciones que se recuerdan para buscar ciclos. Es una ventana, no un historial. */
 export const MEMORIA_DE_REACCIONES = 4096;
 
+// ---------------------------------------------------------------------------
+// LOS CUERPOS
+//
+// El puente de la química a los cuerpos es el ÚNICO punto del proyecto donde el
+// resultado lo decide una regla mía (decisión D1). Va escrito así, sin
+// disfrazarlo de emergencia. Lo que sigue siendo enteramente emergente es qué
+// ciclo aparece, cuándo, con qué genoma, y absolutamente todo lo que pase
+// después de nacer.
+// ---------------------------------------------------------------------------
+
+/**
+ * Tope de criaturas vivas. Es una red de seguridad para la memoria, **no una
+ * regla del mundo**, y por eso importa que nunca llegue a tocarse: mientras lo
+ * toque, la población la decide este número y no la escasez de comida.
+ *
+ * Estaba en 1.200 y sí mandaba: en la semilla 1234 el mundo se quedaba clavado
+ * en 1.195 de 1.200. Subiéndolo a 8.000 para ver qué pasaba, los picos medidos a
+ * 40.000 ticks fueron 1.521, 1.249, 26 y 1.680 según la semilla, y la población
+ * se frenaba sola. O sea que el mundo se limita solo y el tope sobraba.
+ *
+ * 3.000 deja un 70 % de margen sobre el pico más alto medido con las constantes
+ * definitivas (1.776, semilla 1234 a 8.000 ticks). Cuesta 24 MB de genomas y
+ * recorrer ranuras vacías. Si algún mundo llega a tocarlo,
+ * `topeDePoblacionTocado` lo dice y hay que subirlo, nunca recortar en silencio.
+ */
+export const MAX_CRIATURAS = 3000;
+
+/**
+ * Copias que tiene que sostener un ciclo autocatalítico en una celda para
+ * condensarse en un cuerpo.
+ *
+ * Es el umbral del puente. Subirlo hace la vida más rara; bajarlo llena el
+ * planeta de bichos el primer día.
+ *
+ * CUATRO, y no doscientos sesenta como se puso al principio. La razón es que la
+ * escasez de alimento cambió la escala de todo: con 156 átomos por celda, la
+ * copia más numerosa de cualquier molécula en una celda es **4**, y la mediana
+ * de la mejor autocatalítica es 2. Pedir 260 era pedir algo imposible, y el
+ * planeta se quedó sin una sola criatura en cincuenta mil ticks. Un umbral
+ * heredado de otra escala es una puerta cerrada con llave.
+ */
+export const UMBRAL_DEL_PUENTE = 4;
+
+/** Ticks seguidos que hay que sostenerlo. Un pico pasajero no basta. */
+export const CONSTANCIA_DEL_PUENTE = 400;
+
+/** Cada cuántos ticks se mira si alguna celda cruza el puente. */
+export const MIRAR_EL_PUENTE_CADA = 64;
+
+/** Materia que se lleva un cuerpo al condensarse. Sale de la celda. */
+export const MATERIA_AL_NACER = 90;
+
+/** Energía con la que arranca un cuerpo recién condensado. */
+export const ENERGIA_AL_NACER = 120;
+
+// --- Cómo se lee el genoma --------------------------------------------------
+
+/**
+ * Átomos que se promedian para leer un rasgo.
+ *
+ * Una ventana ancha hace que un rasgo cambie poco con cada mutación: hacen falta
+ * varias erratas para moverlo. Eso es lo que permite que el instinto y la forma
+ * del cuerpo se acumulen despacio a lo largo de generaciones en vez de saltar de
+ * golpe (RIESGOS §3).
+ */
+export const VENTANA_DE_RASGO = 24;
+
+/** Probabilidad, entre diez mil, de que un átomo del genoma se copie mal. */
+export const ERRATA_POR_DIEZ_MIL = 9;
+
+// --- Vivir y morir ----------------------------------------------------------
+
+/** Energía que consume por tick un cuerpo de tamaño medio sin hacer nada. */
+export const METABOLISMO_BASE = 0.30;
+
+/** Cuánta energía extra cuesta moverse una celda. */
+export const COSTE_DE_MOVERSE = 1.4;
+
+/** Cuánta energía cuesta morder. */
+export const COSTE_DE_MORDER = 0.8;
+
+/** Cuánta energía cuesta emitir una señal. Nunca se premia emitir, solo cuesta. */
+export const COSTE_DE_EMITIR = 0.45;
+
+/** Cuánta energía cuesta rascar el suelo. */
+export const COSTE_DE_RASCAR = 0.25;
+
+/** Energía que da cada unidad de materia comida. */
+export const ENERGIA_POR_BOCADO = 2.6;
+
+/** Materia que arranca un mordisco. */
+export const MATERIA_POR_MORDISCO = 6;
+
+/** Daño que hace un mordisco a otro cuerpo. */
+export const DANO_POR_MORDISCO = 9;
+
+/** Daño a partir del cual un cuerpo se muere. */
+export const DANO_MORTAL = 100;
+
+/**
+ * Energía que cuesta cerrar un punto de daño (decisión D13).
+ * Curarse no es gratis: se paga con comida, así que un bicho herido y con hambre
+ * tiene que elegir.
+ */
+export const ENERGIA_POR_CURARSE = 2.2;
+
+/** Puntos de daño que se cierran por tick, como mucho. */
+export const CURACION_POR_TICK = 0.12;
+
+/** Energía por debajo de la cual no se cura: primero comer. */
+export const ENERGIA_PARA_CURARSE = 45;
+
+/** Grados fuera de su rango que aguanta un cuerpo antes de empezar a sufrir. */
+export const MARGEN_TERMICO = 16;
+
+/** Daño por tick y por grado fuera del margen. */
+export const DANO_POR_GRADO = 0.09;
+
+/** Materia que se excreta por tick. Vuelve al suelo de la celda. */
+export const EXCRECION_POR_TICK = 1;
+
+// --- Cómo se lee un cuerpo -------------------------------------------------
+//
+// Cada rasgo del genoma sale entre 0 y 1, y estas constantes lo estiran hasta lo
+// que significa en el mundo. El mínimo es lo que le toca a quien sacó 0 en ese
+// gen, y el rango, cuánto más puede sacar quien sacó 1. Ninguna de estas
+// perillas premia ninguna conducta: solo dicen cómo de grande, cómo de rápido o
+// cómo de aguantador puede llegar a ser un cuerpo.
+
+/**
+ * Ticks que vive quien sacó 0 en el gen de longevidad, y cuánto más da sacar 1.
+ *
+ * AVISO: **hoy este gen no hace nada y hay que decirlo.** Medido en la semilla
+ * 1234 a los 20.000 ticks, la longevidad mediana salía en 16.583 ticks y la edad
+ * mediana al morir en 328: nadie se muere de viejo, todos se mueren de hambre o
+ * de daño mucho antes. O sea que la selección no puede tocar este gen, porque
+ * nunca se nota si lo tienes alto o bajo.
+ *
+ * Es el mismo tipo de fallo que el multiplicador del catalizador saturado de la
+ * fase 2: un mecanismo que parece estar y no está. Se arregla bajando estos dos
+ * números hasta que la vejez llegue a matar a alguien, pero eso es un
+ * experimento con su medición, no un retoque. Anotado y pendiente.
+ */
+export const LONGEVIDAD_MINIMA = 2500;
+export const RANGO_DE_LONGEVIDAD = 26000;
+
+/**
+ * Temperatura que prefiere quien sacó 0 en ese gen, en grados, y cuántos grados
+ * más arriba puede preferirla quien sacó 1.
+ */
+export const TEMPERATURA_PREFERIDA_MINIMA = -6;
+export const RANGO_TEMPERATURA_CUERPO = 40;
+
+/** Tamaño de quien sacó 0 en el gen de tamaño, y cuánto más da sacar 1. */
+export const TAMANO_MINIMO = 0.5;
+export const RANGO_DE_TAMANO = 2;
+
+/** Ritmo metabólico de quien sacó 0 en ese gen. El gen suma hasta 1 más. */
+export const RITMO_MINIMO = 0.4;
+
+/**
+ * Cuánto se acerca por tick la temperatura del cuerpo a la de fuera.
+ * Es la inercia térmica: con 0 el cuerpo no siente el clima y con 1 lo copia
+ * entero en un tick.
+ */
+export const INERCIA_TERMICA_DEL_CUERPO = 0.06;
+
+/** Aguante al dolor de quien sacó 0 en ese gen. El gen suma hasta 1 más. */
+export const AGUANTE_MINIMO = 0.5;
+
+/**
+ * Qué parte de un bocado aprovecha quien sacó 0 en el gen de esa dieta.
+ * No hay herbívoros ni carnívoros declarados: son los dos extremos del mismo
+ * gen, y un linaje puede recorrer el camino de uno al otro.
+ */
+export const EFICACIA_MINIMA_DIETA = 0.25;
+
+// --- Los cinco verbos tirando los dados (andamio de la fase 3) --------------
+//
+// En la fase 3 no hay cerebro: cada tick se tiran los dados y sale lo que sale.
+// Esto NO es un comportamiento, es lo contrario: es la línea base contra la que
+// se medirá si los cerebros de la fase 4 sirven de algo. Sin esta comparación,
+// "se mueven con sentido" sería una impresión y no un dato. Estas cuatro
+// probabilidades desaparecen cuando el cerebro decida.
+
+export const PROB_MOVER = 0.35;
+export const PROB_MORDER = 0.30;
+export const PROB_EMITIR = 0.10;
+export const PROB_RASCAR = 0.06;
+
+// --- Reproducción -----------------------------------------------------------
+
+/** Energía a partir de la cual un cuerpo puede desprender una cría. */
+export const ENERGIA_PARA_GEMAR = 260;
+
+/** Materia que se lleva la cría. Sale del cuerpo de la madre, no de la nada. */
+export const MATERIA_DE_LA_CRIA = 45;
+
+/** Energía que se lleva la cría. */
+export const ENERGIA_DE_LA_CRIA = 90;
+
+/**
+ * Edad mínima para poder reproducirse, en ticks. El gen de la fertilidad la
+ * multiplica por un factor entre 0,4 y 2, así que el rango real va de 48 a 240
+ * ticks.
+ *
+ * Estaba en 700 y **la reproducción no disparaba nunca**: medido en la semilla
+ * 1234 a los 20.000 ticks, la edad mediana al morir era 328 ticks y la edad
+ * fértil mediana 793. Pedía madurar al doble de lo que este mundo deja vivir.
+ * Ninguna de las 95 criaturas vivas cumplía las tres condiciones a la vez.
+ *
+ * No se tocó ni la energía ni la materia que exige gemar: esas dos sí filtran
+ * de verdad (las pasaban 35 y 30 de 95) y esa escasez es lo que hace que haya
+ * competencia. Lo que estaba mal era pedir una madurez que el mundo no permite
+ * alcanzar.
+ */
+export const EDAD_REPRODUCTIVA = 120;
+
+/** Factor de la edad fértil de quien sacó 0 en ese gen, y cuánto más da sacar 1. */
+export const FERTILIDAD_MINIMA = 0.4;
+export const RANGO_DE_FERTILIDAD = 1.6;
+
+// --- Carroña ----------------------------------------------------------------
+
+/** Qué parte de la carroña se pudre y vuelve al suelo cada tick, como divisor. */
+export const PUDRICION_DIVISOR = 900;
+
 /**
  * Fase 3. Longitud máxima del genoma, en átomos (decisión D2).
  * Es mucho mayor que MAX_CADENA_SOPA porque de esta cadena salen también los

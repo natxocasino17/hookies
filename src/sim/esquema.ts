@@ -25,8 +25,11 @@
  * lleva 36 números más por celda. Tampoco lleva migración, y por lo mismo: la
  * persistencia sigue siendo de la fase 6 y no hay ningún mundo guardado en
  * ningún disco todavía.
+ *
+ * v4: llegan los cuerpos, con su genoma de miles de átomos. Sin migración por lo
+ * mismo de siempre.
  */
-export const VERSION_ESQUEMA = 3;
+export const VERSION_ESQUEMA = 4;
 
 /** Marca al principio del archivo, para no intentar abrir cualquier cosa. */
 export const MARCA_ARCHIVO = 0x484f4f4b; // "HOOK"

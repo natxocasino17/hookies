@@ -257,6 +257,89 @@ difusión.
 4. Al menos una semilla donde dos poblaciones aisladas dejan de poder cruzarse
    (compatibilidad de gametos cae por debajo del umbral), detectado por la
    telemetría, no declarado.
+
+### Cómo va (sesión del 20 de agosto) — NO terminada
+
+Lo que ya está de pie: el puente, los cuerpos viviendo y muriendo, la gemación,
+y la masa y el determinismo aguantando con cuerpos dentro. Lo que falta para
+poder cerrar la fase: los sentidos, el sexo por gametos, y la detección de
+especiación. El criterio 4 no se puede ni intentar todavía porque el sexo no
+existe.
+
+**El puente no cruzaba nadie.** `UMBRAL_DEL_PUENTE` pedía 260 copias de una
+molécula autocatalítica en una celda, y desde que la sopa se volvió escasa (fase
+2) el máximo real de copias de cualquier molécula en una celda es **4**. Cero
+criaturas en 50.000 ticks. Bajado a 4: nacen linajes.
+
+**La reproducción no disparaba.** Medido en la semilla 1234 a los 20.000 ticks:
+de 95 criaturas vivas, 35 tenían energía de sobra y 30 materia de sobra, pero
+**ninguna cumplía las tres condiciones a la vez**. La que sobraba era la edad:
+la edad mediana al morir era 328 ticks y la edad fértil mediana, 793. Les pedía
+madurar al doble de lo que este mundo deja vivir. `EDAD_REPRODUCTIVA` de 700 a
+120 (rango real 48–240 con el gen). Ni la energía ni la materia se tocaron: esas
+dos sí filtran de verdad y esa escasez es lo que hace que haya competencia.
+
+**La población la decidía mi constante, no el hambre.** Con `MAX_CRIATURAS` en
+1.200, la semilla 1234 se quedaba clavada en 1.195. Subido a 8.000 para ver qué
+pasaba, los picos a 40.000 ticks fueron 1.521, 1.249, 26, 1.680 y 1.681 según la
+semilla, y la población se frenaba sola. Fijado en 3.000: red de seguridad que
+no manda.
+
+**Cómo queda el mundo con las constantes definitivas** (8.000 ticks cada una):
+
+| semilla | vivas | pico | del puente | crías | muertes | linajes vivos | tope | masa |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 322 | 579 | 52 | 5.807 | 5.537 | 1 | no | ok |
+| 7 | 726 | 935 | 56 | 7.209 | 6.537 | 2 | no | ok |
+| 42 | 0 | 15 | 58 | 8 | 66 | 0 | no | ok |
+| 1234 | 1.114 | 1.776 | 55 | 19.373 | 18.314 | 1 | no | ok |
+
+Lo que dice esa tabla, en orden de importancia:
+
+- **La reproducción sostiene el mundo, no el puente.** En la 1234 hay 55 cuerpos
+  condensados de la química contra 19.373 crías. Antes de esta sesión la segunda
+  columna era cero.
+- **Nadie toca el tope** en ninguna semilla, así que la curva de población
+  significa algo.
+- **La semilla 42 se extingue.** Eso es un resultado, no un fallo: hay mundos
+  donde la vida no arranca, y no se va a tocar nada para que arranque.
+- **Quedan uno o dos linajes vivos de los 52–58 fundados.** El criterio 1 de la
+  fase se cumple —unos aguantan y otros no— pero acaba en casi monocultivo, y eso
+  hay que mirarlo cuando lleguen la especiación y el sexo.
+
+**La vida necesita mundo.** Medido de paso: en el planeta de nivel 3 (642 celdas,
+el que usan los tests centrales) los cuerpos no aguantan — picos de 3, 7, 4 y 53
+y extinción total antes de los 12.000 ticks. Menos celdas es menos comida y
+menos sitio donde esconderse. Por eso los tests de cuerpos van en el planeta
+grande aunque cuesten minutos.
+
+**El gen de la longevidad no hace nada.** Medido de paso: la longevidad mediana
+sale en 16.583 ticks y la edad mediana al morir en 328. Nadie llega a viejo, así
+que la selección no puede ver ese gen. Es el mismo tipo de mecanismo fantasma
+que el multiplicador del catalizador saturado de la fase 2. Se arregla bajando
+`LONGEVIDAD_MINIMA` y `RANGO_DE_LONGEVIDAD` hasta que la vejez mate a alguien,
+pero eso pide su propia medición y no se ha hecho.
+
+**Lo que costó poder subir el tope.** El tick estaba en 10,66 ms de los 16.
+Sospeché de `morder`, que recorría las 1.200 ranuras de criatura para encontrar
+a un vecino, y me equivoqué: arreglarlo bajó de 10,54 a 10,35 ms, o sea nada. El
+bucle caro era `mordisqueaUnaPlanta`, que recorría las **16.000** ranuras de
+planta. Con un índice de quién hay en cada celda, las criaturas pasaron de 4,28 a
+1,62 ms y el tick de 10,66 a 7,65. Los dos índices
+son estado derivado: no se guardan, se reconstruyen al cargar, y hay un test que
+comprueba que dicen lo mismo que el recorrido largo y que sobreviven a
+guardar/cargar. La huella del mundo a 8.000 ticks es idéntica antes y después
+del atajo (`3226744334`), que es la prueba de que es velocidad y no un cambio de
+física.
+
+**Y una advertencia sobre esos milisegundos.** Al final de la sesión la misma
+medición daba 72–88 ms/tick, con siete criaturas vivas y todo. La máquina se
+había vuelto unas diez veces más lenta —misma carga, mismo proceso, cuatro CPUs
+libres—, así que **el número absoluto no es reproducible y no hay que fiarse de
+él**. Lo que sí vale son las proporciones, que se midieron seguidas y con la
+máquina igual: la química se lleva el 46 % del tick, y las criaturas bajaron del
+40 % al 21 %. El presupuesto de 16 ms de CLAUDE.md §2.4 se mide donde tiene que
+medirse, que es en el navegador con el Worker de la fase 5, no aquí.
 5. El tope duro de seguridad de población, si se toca, queda registrado con
    aviso claro; nunca se recorta en silencio.
 

@@ -18,6 +18,7 @@ import { siguienteU32 } from './rng.js';
 import { avanzarElClima } from './clima.js';
 import { avanzarLasPlantas } from './plantas.js';
 import { avanzarLaQuimica } from './quimica.js';
+import { avanzarLasCriaturas } from './criaturas.js';
 
 /**
  * Reparte materia entre celdas vecinas del planeta.
@@ -34,7 +35,7 @@ import { avanzarLaQuimica } from './quimica.js';
  * en el mismo orden introduce una deriva sistemática, que sería un artefacto
  * del método y no una corriente del planeta.
  */
-function difundirMateria(estado: EstadoMundo, geo: Geometria, alReves: boolean): void {
+export function difundirMateria(estado: EstadoMundo, geo: Geometria, alReves: boolean): void {
   const { materia } = estado;
   const { vecinos, nVecinos, nCeldas } = geo;
   const divisor = DIFUSION_MATERIA_DIVISOR;
@@ -62,5 +63,6 @@ export function avanzarUnTick(estado: EstadoMundo, geo: Geometria): void {
   avanzarElClima(estado, geo, alReves);
   avanzarLaQuimica(estado, geo, alReves);
   avanzarLasPlantas(estado, geo);
+  avanzarLasCriaturas(estado, geo);
   estado.tick += 1;
 }

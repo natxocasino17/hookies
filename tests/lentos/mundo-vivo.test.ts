@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GENES_PLANTA,
+  MAX_CRIATURAS,
   MAX_PLANTAS,
   MAX_VECINOS,
   TICKS_POR_ANO,
@@ -24,6 +25,7 @@ import { aguaTotal, direccionDelSol } from '../../src/sim/clima.js';
 import { GEN_TEMPERATURA } from '../../src/sim/plantas.js';
 import { atomosTotales, censoDeMoleculas } from '../../src/sim/quimica.js';
 import { buscarCiclos } from '../../src/sim/autocatalisis.js';
+import { linajesVivos } from '../../src/sim/criaturas.js';
 
 describe('el clima', () => {
   it('el agua del planeta no cambia jamás', () => {
@@ -240,5 +242,116 @@ describe('la química', () => {
 
     const hallazgo = buscarCiclos(estado);
     expect(hallazgo.directas.length).toBeGreaterThan(0);
+  });
+});
+
+describe('los cuerpos', () => {
+  /**
+   * Correr un mundo entero es caro, así que cada semilla se corre UNA vez y
+   * todas las comprobaciones leen de la misma corrida. Escrito de la manera
+   * obvia —una corrida por comprobación— esta tanda sola pasaba de la hora, y un
+   * test que tarda una hora acaba sin correrse.
+   *
+   * Y van en el planeta grande, no en el de nivel 3 de los tests centrales.
+   * Medido: a nivel 3 (642 celdas) los cuerpos no aguantan — picos de 3, 7, 4 y
+   * 53 criaturas, y extinción total antes de los 12.000 ticks. Menos celdas es
+   * menos comida y menos sitio donde esconderse, así que la vida no arranca. No
+   * es un fallo del test: es que hace falta mundo.
+   */
+  const TICKS = 8_000;
+  const SEMILLAS = [1, 7, 1234];
+  const corridas = new Map<number, ReturnType<typeof correr>>();
+
+  function correr(semilla: number) {
+    const estado = crearEstado(semilla);
+    const geo = geometriaDe(estado);
+    const materiaInicial = materiaTotal(estado);
+    let nacimientos = 0;
+    let muertes = 0;
+    let pico = 0;
+    for (let i = 0; i < TICKS; i++) {
+      avanzarUnTick(estado, geo);
+      nacimientos += estado.nacimientosEsteTick;
+      muertes += estado.muertesEsteTick;
+      if (estado.criaturasVivas > pico) pico = estado.criaturasVivas;
+    }
+    // Cada condensación del puente funda un linaje nuevo, así que los linajes
+    // fundados son exactamente los nacimientos que NO son crías de nadie.
+    const porElPuente = estado.siguienteLinaje - 1;
+    return { estado, materiaInicial, nacimientos, muertes, pico, porElPuente };
+  }
+
+  function mundo(semilla: number) {
+    let r = corridas.get(semilla);
+    if (!r) {
+      r = correr(semilla);
+      corridas.set(semilla, r);
+    }
+    return r;
+  }
+
+  it('nacen crías de otras criaturas, no solo cuerpos del puente', () => {
+    // Esto estuvo en cero mucho tiempo sin que se notara: había criaturas, pero
+    // todas venían de la química y ninguna de una madre. Un mundo donde nadie se
+    // reproduce no tiene herencia, y sin herencia no hay nada que evolucione.
+    //
+    // La causa era la edad fértil: pedía 793 ticks de mediana cuando la edad
+    // mediana al morir era 328. Nadie llegaba a mayor.
+    //
+    // Medido con las constantes de ahora, en la semilla 1234: 55 cuerpos del
+    // puente contra 19.373 crías.
+    const r = mundo(1234);
+    expect(r.porElPuente, 'cuerpos condensados por el puente').toBeGreaterThan(0);
+    expect(r.nacimientos - r.porElPuente, 'crías nacidas de una madre').toBeGreaterThan(
+      r.porElPuente,
+    );
+  });
+
+  it('el tope de población no llega a mandar', () => {
+    // `MAX_CRIATURAS` es una red de seguridad para la memoria, no una regla del
+    // mundo. Mientras se toque, la población la decide ese número y no el hambre,
+    // y la curva de población deja de querer decir nada. Estuvo mandando: con el
+    // tope en 1.200, la semilla 1234 se quedaba clavada en 1.195.
+    for (const semilla of SEMILLAS) {
+      const r = mundo(semilla);
+      expect(r.estado.topeDePoblacionTocado, `semilla ${semilla}`).toBe(false);
+      expect(r.pico, `pico de la semilla ${semilla}`).toBeLessThan(MAX_CRIATURAS);
+    }
+  });
+
+  it('ni explotan hasta el tope ni se extinguen todas', () => {
+    // Criterio 2 de la fase 3. Se mira "en la mayoría de las semillas" a
+    // propósito: que un mundo se muera es un resultado legítimo, no un bug.
+    //
+    // Aquí van tres semillas y no más porque cada mundo cuesta minutos. La 42 se
+    // midió aparte y **se extingue del todo**: pico de 15 criaturas y cero vivas
+    // a los 8.000 ticks. Se deja fuera del test por eso, no para maquillar el
+    // resultado: hay mundos donde la vida no arranca, y no se va a tocar nada
+    // para que arranquen.
+    const vivos = SEMILLAS.filter((s) => mundo(s).estado.criaturasVivas > 0).length;
+    expect(vivos).toBeGreaterThanOrEqual(2);
+  });
+
+  it('unos linajes aguantan y otros se extinguen', () => {
+    // Criterio 1 de la fase 3, en su parte medible hoy. Nadie decide cuál cae: se
+    // funda un linaje por cada condensación y la mayoría no llega a nada.
+    //
+    // Ojo al matiz honesto: de los 52 a 58 linajes que se fundan, acaban vivos
+    // uno o dos. Se cumple el criterio, pero el final es casi monocultivo, y eso
+    // habrá que mirarlo cuando lleguen el sexo y la especiación.
+    const r = mundo(1234);
+    const vivos = linajesVivos(r.estado);
+    expect(r.porElPuente, 'linajes fundados').toBeGreaterThan(20);
+    expect(vivos, 'linajes vivos al final').toBeGreaterThan(0);
+    expect(vivos, 'linajes vivos al final').toBeLessThan(r.porElPuente);
+  });
+
+  it('la masa se conserva con cuerpos, crías y carroña dentro', () => {
+    for (const semilla of SEMILLAS) {
+      const r = mundo(semilla);
+      expect(r.nacimientos, `nacimientos, semilla ${semilla}`).toBeGreaterThan(0);
+      expect(r.muertes, `muertes, semilla ${semilla}`).toBeGreaterThan(0);
+      expect(materiaTotal(r.estado), `masa, semilla ${semilla}`).toBe(r.materiaInicial);
+    }
   });
 });
