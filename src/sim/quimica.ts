@@ -29,6 +29,7 @@ import {
   ESTABILIDAD_ATOMO,
   INTENTOS_DE_REACCION,
   LOTES_DE_QUIMICA,
+  N_DIMEROS,
   MAX_VECINOS,
   N_TIPOS_ATOMO,
   PENALIZACION_POR_DESAJUSTE,
@@ -45,6 +46,8 @@ import {
   atomoEn,
   atomoSuelto,
   desajuste,
+  dimeroDelIndice,
+  indiceDeDimero,
   longitud,
   MOLECULA_VACIA,
   prefijo,
@@ -62,6 +65,16 @@ const CANDIDATOS_A_CATALIZADOR = 4;
 // ---------------------------------------------------------------------------
 // La sopa de una celda
 // ---------------------------------------------------------------------------
+
+/** Cuántos dímeros de un tipo hay en una celda. */
+function dimeros(estado: EstadoMundo, celda: number, indice: number): number {
+  return estado.dimeros[celda * N_DIMEROS + indice]!;
+}
+
+function cambiarDimeros(estado: EstadoMundo, celda: number, indice: number, delta: number): void {
+  const i = celda * N_DIMEROS + indice;
+  estado.dimeros[i] = estado.dimeros[i]! + delta;
+}
 
 /** Átomos sueltos de un tipo en una celda. */
 function libres(estado: EstadoMundo, celda: number, tipo: number): number {
@@ -95,8 +108,15 @@ function anadir(estado: EstadoMundo, celda: number, m: Molecula, cuantas: number
   if (m === MOLECULA_VACIA || cuantas <= 0) return;
   const largo = longitud(m);
 
+  // Los átomos sueltos y los dímeros tienen su propio cajón: no compiten por
+  // las ranuras del top-N. Son pocos y conocidos de antemano —seis y treinta y
+  // seis— así que caben todos sin filtro.
   if (largo === 1) {
     cambiarLibres(estado, celda, primerAtomo(m), cuantas);
+    return;
+  }
+  if (largo === 2) {
+    cambiarDimeros(estado, celda, indiceDeDimero(atomoEn(m, 0), atomoEn(m, 1)), cuantas);
     return;
   }
 
@@ -137,10 +157,17 @@ function anadir(estado: EstadoMundo, celda: number, m: Molecula, cuantas: number
 
 /** Saca moléculas de una celda. Devuelve si había suficientes. */
 function quitar(estado: EstadoMundo, celda: number, m: Molecula, cuantas: number): boolean {
-  if (longitud(m) === 1) {
+  const largo = longitud(m);
+  if (largo === 1) {
     const tipo = primerAtomo(m);
     if (libres(estado, celda, tipo) < cuantas) return false;
     cambiarLibres(estado, celda, tipo, -cuantas);
+    return true;
+  }
+  if (largo === 2) {
+    const indice = indiceDeDimero(atomoEn(m, 0), atomoEn(m, 1));
+    if (dimeros(estado, celda, indice) < cuantas) return false;
+    cambiarDimeros(estado, celda, indice, -cuantas);
     return true;
   }
   const base = celda * TOP_N_MOLECULAS;
@@ -160,6 +187,7 @@ function quitar(estado: EstadoMundo, celda: number, m: Molecula, cuantas: number
 function elegirReactivo(estado: EstadoMundo, celda: number): Molecula {
   let total = 0;
   for (let t = 0; t < N_TIPOS_ATOMO; t++) total += libres(estado, celda, t);
+  for (let d = 0; d < N_DIMEROS; d++) total += dimeros(estado, celda, d);
   const base = celda * TOP_N_MOLECULAS;
   for (let k = 0; k < TOP_N_MOLECULAS; k++) total += estado.sopaCantidad[base + k]!;
   if (total <= 0) return MOLECULA_VACIA;
@@ -168,6 +196,10 @@ function elegirReactivo(estado: EstadoMundo, celda: number): Molecula {
   for (let t = 0; t < N_TIPOS_ATOMO; t++) {
     dado -= libres(estado, celda, t);
     if (dado < 0) return atomoSuelto(t);
+  }
+  for (let d = 0; d < N_DIMEROS; d++) {
+    dado -= dimeros(estado, celda, d);
+    if (dado < 0) return dimeroDelIndice(d);
   }
   for (let k = 0; k < TOP_N_MOLECULAS; k++) {
     dado -= estado.sopaCantidad[base + k]!;
@@ -197,6 +229,19 @@ function elegirReactivo(estado: EstadoMundo, celda: number): Molecula {
  * aparezca nunca.
  */
 function hayCatalizador(estado: EstadoMundo, celda: number, a: number, b: number): boolean {
+  // Un dímero tiene exactamente un enlace, así que también puede ser plantilla.
+  // Y hay solo 36, así que se pueden mirar todos sin que cueste nada.
+  for (let d = 0; d < N_DIMEROS; d++) {
+    if (dimeros(estado, celda, d) <= 0) continue;
+    const m = dimeroDelIndice(d);
+    if (
+      desajuste(atomoEn(m, 0), a) <= TOLERANCIA_DEL_CATALIZADOR &&
+      desajuste(atomoEn(m, 1), b) <= TOLERANCIA_DEL_CATALIZADOR
+    ) {
+      return true;
+    }
+  }
+
   const base = celda * TOP_N_MOLECULAS;
   for (let intento = 0; intento < CANDIDATOS_A_CATALIZADOR; intento++) {
     const k = siguienteEntero(estado.rng, TOP_N_MOLECULAS);
@@ -237,6 +282,14 @@ function difundir(estado: EstadoMundo, geo: Geometria, alReves: boolean): void {
         if (flujo === 0) continue;
         cambiarLibres(estado, i, t, -flujo);
         cambiarLibres(estado, j, t, flujo);
+      }
+
+      // Dímeros.
+      for (let d = 0; d < N_DIMEROS; d++) {
+        const flujo = ((dimeros(estado, i, d) - dimeros(estado, j, d)) / DIFUSION_QUIMICA_DIVISOR) | 0;
+        if (flujo === 0) continue;
+        cambiarDimeros(estado, i, d, -flujo);
+        cambiarDimeros(estado, j, d, flujo);
       }
 
       // Moléculas: solo se mueve lo que la celda de destino ya sabe alojar o
@@ -374,6 +427,7 @@ export function sembrarLaSopa(estado: EstadoMundo): void {
 export function atomosEnCelda(estado: EstadoMundo, celda: number): number {
   let total = 0;
   for (let t = 0; t < N_TIPOS_ATOMO; t++) total += libres(estado, celda, t);
+  for (let d = 0; d < N_DIMEROS; d++) total += dimeros(estado, celda, d) * 2;
   const base = celda * TOP_N_MOLECULAS;
   for (let k = 0; k < TOP_N_MOLECULAS; k++) {
     const m = estado.sopaMolecula[base + k]!;
@@ -398,6 +452,13 @@ export function censoDeMoleculas(estado: EstadoMundo): {
   let sumaLargos = 0;
   let cuantas = 0;
   for (let c = 0; c < estado.nCeldas; c++) {
+    for (let d = 0; d < N_DIMEROS; d++) {
+      const cuantos = dimeros(estado, c, d);
+      if (cuantos <= 0) continue;
+      vistas.add(dimeroDelIndice(d));
+      sumaLargos += 2 * cuantos;
+      cuantas += cuantos;
+    }
     const base = c * TOP_N_MOLECULAS;
     for (let k = 0; k < TOP_N_MOLECULAS; k++) {
       const m = estado.sopaMolecula[base + k]!;

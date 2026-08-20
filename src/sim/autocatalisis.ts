@@ -23,12 +23,18 @@
  * el sitio es este archivo.
  */
 
-import { N_TIPOS_ATOMO, TOLERANCIA_DEL_CATALIZADOR, TOP_N_MOLECULAS } from './constants.js';
+import {
+  N_DIMEROS,
+  N_TIPOS_ATOMO,
+  TOLERANCIA_DEL_CATALIZADOR,
+  TOP_N_MOLECULAS,
+} from './constants.js';
 import type { EstadoMundo } from './estado.js';
 import {
   atomoEn,
   comoTexto,
   desajuste,
+  dimeroDelIndice,
   encajan,
   longitud,
   MOLECULA_VACIA,
@@ -100,6 +106,13 @@ export interface Hallazgo {
 export function buscarCiclos(estado: EstadoMundo, minimoDeCopias = 200): Hallazgo {
   const copias = new Map<Molecula, number>();
   for (let c = 0; c < estado.nCeldas; c++) {
+    for (let d = 0; d < N_DIMEROS; d++) {
+      const cuantos = estado.dimeros[c * N_DIMEROS + d]!;
+      if (cuantos > 0) {
+        const m = dimeroDelIndice(d);
+        copias.set(m, (copias.get(m) ?? 0) + cuantos);
+      }
+    }
     const base = c * TOP_N_MOLECULAS;
     for (let k = 0; k < TOP_N_MOLECULAS; k++) {
       const m = estado.sopaMolecula[base + k]!;

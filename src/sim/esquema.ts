@@ -20,8 +20,13 @@
  * dejaba de ser el mismo. No lleva migración desde la v1 a propósito: la v1
  * nunca llegó a guardarse en ningún disco — la persistencia es de la fase 6 —
  * así que no hay ningún mundo que rescatar.
+ *
+ * v3: los dímeros pasan a tener su propio cajón en la sopa, así que el archivo
+ * lleva 36 números más por celda. Tampoco lleva migración, y por lo mismo: la
+ * persistencia sigue siendo de la fase 6 y no hay ningún mundo guardado en
+ * ningún disco todavía.
  */
-export const VERSION_ESQUEMA = 2;
+export const VERSION_ESQUEMA = 3;
 
 /** Marca al principio del archivo, para no intentar abrir cualquier cosa. */
 export const MARCA_ARCHIVO = 0x484f4f4b; // "HOOK"

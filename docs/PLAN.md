@@ -120,52 +120,52 @@ sigue conservándose exactamente con la difusión sobre la nueva tabla de vecino
 5. 30 fps en un móvil de gama media, con la simulación por debajo de su
    presupuesto.
 
-## Fase 2 — Química  ·  PASA EL CRITERIO · queda un tope diagnosticado
+## Fase 2 — Química  ·  PASA SU CRITERIO · con un resultado nulo honesto
 
-**Lo que funciona, medido a 20.000 ticks por semilla:**
+**Lo que funciona**, medido a 8.000–20.000 ticks por semilla:
+
+| | al empezar | ahora |
+|---|---|---|
+| Moléculas distintas vivas | 42 – 241 | **13.000 – 13.600** |
+| Largo medio de cadena | 2,77 | 2,52 |
+| Cadenas de 8 átomos | casi ninguna | decenas de miles de copias |
+| Coste del tick | 5,8 ms | 6,9 ms (de 16) |
 
 - Átomos conservados exactos. La sopa no se para nunca.
-- **Aparecen moléculas autocatalíticas en el 100 % de las semillas.** `AFAF`
-  lleva dentro `AF`, que es justo la plantilla que sujeta el enlace entre la F
-  del final de un `AF` y la A del principio del siguiente: se ayuda a nacer.
-- El tick cuesta 4,4 ms de los 16 de presupuesto.
+- **Aparecen moléculas autocatalíticas en el 100 % de las semillas**, sin que
+  nadie las pusiera. `AFA` lleva dentro la plantilla que sujeta su propio enlace:
+  se ayuda a nacer.
 
-**La afinidad graduada abrió el mundo de par en par.** Antes cada átomo encajaba
-con exactamente uno y con ningún otro, así que solo podían crecer cadenas
-estrictamente alternas. Ahora encajar es cuestión de grado: la pareja perfecta
-se une fácil, las demás cada vez menos, **ninguna es imposible**. Y un enlace mal
-emparejado además es débil, así que las cadenas raras existen de paso en vez de
-quedarse como basura permanente.
+### El resultado nulo, dicho tal cual
 
-| | antes (binaria) | ahora (graduada) |
-|---|---|---|
-| Moléculas distintas vivas | 42 – 241 | **7.472 – 7.770** |
-| Coste del tick | 5,8 ms | 4,4 ms |
+**Cuáles moléculas se autocatalizan NO depende de la semilla.** Salen siempre las
+mismas 14. Se probaron tres palancas y ninguna lo movió:
 
-**El tope que queda, ya diagnosticado con números.** Las moléculas
-autocatalíticas siguen siendo 12–14 y casi las mismas en toda semilla. Y ahora
-se sabe por qué, que no era lo que parecía:
+1. **Afinidad graduada** en vez de binaria → de 42 a 7.500 moléculas distintas.
+   Las autocatalíticas, las mismas.
+2. **Dímeros con cajón propio**, fuera de las 24 ranuras que acaparaban → de
+   7.500 a 50.000 moléculas, y las cadenas de 8 por fin sobreviven. Las
+   autocatalíticas, las mismas.
+3. **Unión base baja para que el catalizador decida** — se descubrió que con la
+   unión a 620 y empuje ×14 la probabilidad salía 8.680 sobre 1.000, o sea que
+   **el catalizador estaba saturado y no daba ninguna ventaja real**. Arreglado.
+   Las autocatalíticas, las mismas.
 
-1. Enumerando **todas** las cadenas posibles: de largo 3 solo 6 de 216 pueden
-   catalizarse a sí mismas; de largo 4, 102 de 1.296; de largo 8, cientos de
-   miles. **El mundo encuentra las 6 de largo 3 y 6 de largo 4 — o sea, las
-   encuentra casi todas.** No es que no explore.
-2. El largo medio de cadena está clavado en **2,22** y no se mueve ni doblando
-   la probabilidad de unión ni bajando la de rotura a la mitad.
-3. La causa está medida: **el 100 % de las ranuras del top-24 están ocupadas**
-   (61.486 de 61.488) y los dímeros las acaparan — 573.560 copias frente a
-   35.611 de largo 3. Una cadena larga es rara al nacer, así que la desalojan
-   antes de que pueda acumularse.
+**Por qué, y está enumerado, no supuesto**: contando todas las cadenas posibles,
+de largo 3 solo **6 de 216** pueden catalizarse a sí mismas, y de largo 4, 102 de
+1.296. El mundo encuentra las 6 y unas cuantas de largo 4 — **las encuentra todas
+las veces**. No hay nada contingente que descubrir a esa escala. La contingencia
+vive en las cadenas de 5 o más, donde hay miles de opciones, y ahí ninguna llega
+a concentrarse lo suficiente: con 13.000 especies repartiéndose la materia, cada
+una tiene demasiadas pocas copias para amplificarse.
 
-Es exactamente el riesgo escrito en `RIESGOS.md` §2b antes de empezar: **el
-recorte de rendimiento está filtrando justo el fenómeno que la fase busca.**
+### La siguiente palanca, sin probar todavía
 
-*Qué hacer, y es barato*: los dímeros no deberían competir por las ranuras. Con
-6 tipos de átomo **solo hay 36 dímeros posibles**, así que caben en su propio
-array denso — igual que los átomos sueltos — y las 24 ranuras quedan libres para
-cadenas de 3 en adelante. Si con eso el largo medio sube por encima de 4, se
-entra en la zona donde hay miles de autocatalíticas posibles y **empezarán a
-salir distintas en cada semilla**.
+**Bajar la difusión química.** Ahora las moléculas se reparten entre celdas
+vecinas rápido, así que todo el planeta converge a la misma sopa. Si cada celda
+mezclara menos con sus vecinas, **regiones distintas podrían desarrollar químicas
+distintas** — y ahí sí la historia local decidiría quién gana. Las celdas ya son
+compartimentos; lo que falta es que lo sean de verdad.
 
 *Lo que no se hace*: sembrar a mano moléculas interesantes.
 

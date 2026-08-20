@@ -41,6 +41,18 @@ export function ultimoAtomo(m: Molecula): number {
   return (m >>> (4 + (longitud(m) - 1) * 3)) & 0x7;
 }
 
+/** El hueco que le toca a un dímero en el cajón de los dímeros. */
+export function indiceDeDimero(a: number, b: number): number {
+  return a * N_TIPOS_ATOMO + b;
+}
+
+/** La molécula que corresponde a un hueco del cajón de los dímeros. */
+export function dimeroDelIndice(indice: number): Molecula {
+  const a = (indice / N_TIPOS_ATOMO) | 0;
+  const b = indice % N_TIPOS_ATOMO;
+  return 2 | (a << 4) | (b << 7);
+}
+
 /** Construye una molécula de un solo átomo. */
 export function atomoSuelto(tipo: number): Molecula {
   return 1 | (tipo << 4);

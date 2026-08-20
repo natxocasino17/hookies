@@ -558,7 +558,23 @@ export const ENERGIA_ENLACE_ATOMO = [0.6, 1.4, 0.9, 2.1, 1.1, 1.7];
  */
 export const ESTABILIDAD_ATOMO = [1.0, 2.4, 1.6, 3.0, 1.3, 2.0];
 
-/** Moléculas distintas que se siguen por celda. El resto son átomos sueltos. */
+/**
+ * Dímeros posibles: todas las parejas ordenadas del alfabeto. Derivado.
+ *
+ * Los dímeros tienen su propio cajón, aparte de las ranuras del top-N, y eso
+ * arregló un tope medido: con 6 tipos de átomo solo hay 36 dímeros posibles, así
+ * que caben todos en un array denso sin filtro ninguno.
+ *
+ * Antes competían por las 24 ranuras y las acaparaban — 573.560 copias de largo
+ * 2 frente a 35.611 de largo 3, con el 100 % de las ranuras ocupadas. Una cadena
+ * larga nace rara y la desalojaban antes de que pudiera acumularse, así que el
+ * largo medio se quedaba clavado en 2,22 hiciera lo que hiciera con las tasas de
+ * reacción. Era el riesgo escrito en RIESGOS §2b: el recorte de rendimiento
+ * filtrando justo el fenómeno que la fase busca.
+ */
+export const N_DIMEROS = N_TIPOS_ATOMO * N_TIPOS_ATOMO;
+
+/** Moléculas de tres átomos o más que se siguen por celda. */
 export const TOP_N_MOLECULAS = 24;
 
 /** Átomos sueltos de cada tipo con los que arranca cada celda. */
@@ -635,8 +651,15 @@ export const TOLERANCIA_DEL_CATALIZADOR = 0;
  *
  * No era que el mundo no explorara: es que no llegaba a donde hay algo que
  * explorar.
+ *
+ * Y hay una segunda razón para que este número sea BAJO, que es la importante:
+ * con 620 y un empuje de catalizador de ×14, la probabilidad de una reacción
+ * catalizada salía 8.680 sobre 1.000. O sea, **siempre**. El catalizador estaba
+ * saturado y no daba ninguna ventaja real, así que ninguna molécula podía
+ * imponerse sobre las demás por catalizarse mejor. Con la unión base baja, ser
+ * catalizado sí decide, y ahí es donde puede aparecer un ganador.
  */
-export const UNION_POR_MIL = 620;
+export const UNION_POR_MIL = 45;
 
 /** Probabilidad base, entre mil, de que un átomo suelto sustituya a otro. */
 export const SUSTITUCION_POR_MIL = 40;
@@ -644,10 +667,17 @@ export const SUSTITUCION_POR_MIL = 40;
 /**
  * Cuánto multiplica un catalizador la probabilidad de una reacción.
  *
- * Este es **el número que decide si la fase 2 sale o no** (RIESGOS §2a). Sin
- * catálisis no hay autocatálisis y no hay nada: ninguna molécula influiría en
- * una reacción en la que no participa, y el mundo se quedaría en una sopa
- * inerte. Si no aparecen ciclos, esto es lo primero que se toca.
+ * Sin catálisis no hay autocatálisis y no hay nada: ninguna molécula influiría
+ * en una reacción en la que no participa, y el mundo se quedaría en una sopa
+ * inerte.
+ *
+ * CUIDADO CON SATURARLO: la probabilidad final es UNION_POR_MIL · empuje ·
+ * facilidad sobre mil, así que con UNION_POR_MIL por encima de **71** el
+ * producto pasa de mil y el catalizador deja de dar ninguna ventaja — está
+ * siempre al máximo. Eso pasó de verdad: con la unión a 620 el empuje ×14 daba
+ * 8.680 sobre 1.000, o sea siempre, y ninguna molécula podía imponerse por
+ * catalizarse mejor que otra. Un multiplicador saturado es un mecanismo que
+ * parece que está y no está.
  */
 export const EMPUJE_DEL_CATALIZADOR = 14;
 

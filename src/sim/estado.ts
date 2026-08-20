@@ -14,6 +14,7 @@ import {
   AGUA_INICIAL_OCEANO,
   AGUA_INICIAL_SUELO,
   ESCALA_ENERGIA_QUIMICA,
+  N_DIMEROS,
   N_TIPOS_ATOMO,
   TOP_N_MOLECULAS,
   GENES_PLANTA,
@@ -129,6 +130,14 @@ export interface EstadoMundo {
   //
   /** Átomos sueltos de cada tipo en cada celda: N_TIPOS_ATOMO por celda. */
   atomosLibres: Int32Array;
+  /**
+   * Dímeros de cada tipo en cada celda: N_DIMEROS por celda.
+   *
+   * Tienen cajón propio, aparte de las ranuras del top-N, porque solo hay 36
+   * posibles y caben todos sin filtro. Antes competían por las 24 ranuras y las
+   * acaparaban, y eso dejaba el largo medio de las cadenas clavado en 2,22.
+   */
+  dimeros: Int32Array;
   /** Las moléculas que sigue cada celda: TOP_N_MOLECULAS por celda, 0 = hueco. */
   sopaMolecula: Int32Array;
   /** Cuántas hay de cada una. */
@@ -171,7 +180,7 @@ const CAMPOS_POR_CELDA = 5;
 /** Bytes por planta: celda, masa, edad y fruto en enteros, más sus genes. */
 const BYTES_POR_PLANTA = 16 + GENES_PLANTA;
 /** Bytes por celda de la sopa: átomos sueltos más las moléculas con su cantidad. */
-const BYTES_SOPA_POR_CELDA = N_TIPOS_ATOMO * 4 + TOP_N_MOLECULAS * 8;
+const BYTES_SOPA_POR_CELDA = N_TIPOS_ATOMO * 4 + N_DIMEROS * 4 + TOP_N_MOLECULAS * 8;
 
 /** Crea un mundo nuevo. Determinista: la misma semilla da siempre el mismo mundo. */
 export function crearEstado(
@@ -220,6 +229,7 @@ export function crearEstado(
     plantasVivas: 0,
     masaVegetal: 0,
     atomosLibres: new Int32Array(geo.nCeldas * N_TIPOS_ATOMO),
+    dimeros: new Int32Array(geo.nCeldas * N_DIMEROS),
     sopaMolecula: new Int32Array(geo.nCeldas * TOP_N_MOLECULAS),
     sopaCantidad: new Int32Array(geo.nCeldas * TOP_N_MOLECULAS),
     escalaEnergiaQuimica: ESCALA_ENERGIA_QUIMICA,
@@ -303,7 +313,11 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   for (let i = 0; i < n * N_TIPOS_ATOMO; i++) {
     vista.setInt32(sopa + i * 4, estado.atomosLibres[i]!, true);
   }
-  const moleculas = sopa + n * N_TIPOS_ATOMO * 4;
+  const dimerosEn = sopa + n * N_TIPOS_ATOMO * 4;
+  for (let i = 0; i < n * N_DIMEROS; i++) {
+    vista.setInt32(dimerosEn + i * 4, estado.dimeros[i]!, true);
+  }
+  const moleculas = dimerosEn + n * N_DIMEROS * 4;
   for (let i = 0; i < n * TOP_N_MOLECULAS; i++) {
     vista.setInt32(moleculas + i * 8, estado.sopaMolecula[i]!, true);
     vista.setInt32(moleculas + i * 8 + 4, estado.sopaCantidad[i]!, true);
@@ -396,7 +410,12 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   for (let i = 0; i < atomosLibres.length; i++) {
     atomosLibres[i] = vista.getInt32(sopaEn + i * 4, true);
   }
-  const moleculasEn = sopaEn + n * N_TIPOS_ATOMO * 4;
+  const dimerosDesde = sopaEn + n * N_TIPOS_ATOMO * 4;
+  const dimeros = new Int32Array(n * N_DIMEROS);
+  for (let i = 0; i < dimeros.length; i++) {
+    dimeros[i] = vista.getInt32(dimerosDesde + i * 4, true);
+  }
+  const moleculasEn = dimerosDesde + n * N_DIMEROS * 4;
   const sopaMolecula = new Int32Array(n * TOP_N_MOLECULAS);
   const sopaCantidad = new Int32Array(n * TOP_N_MOLECULAS);
   for (let i = 0; i < sopaMolecula.length; i++) {
@@ -428,6 +447,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     plantasVivas: vivas,
     masaVegetal,
     atomosLibres,
+    dimeros,
     sopaMolecula,
     sopaCantidad,
     escalaEnergiaQuimica: ESCALA_ENERGIA_QUIMICA,
