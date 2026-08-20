@@ -24,13 +24,16 @@ import {
   ATOMOS_INICIALES_POR_TIPO,
   DIFUSION_QUIMICA_DIVISOR,
   EMPUJE_DEL_CATALIZADOR,
+  DEBILIDAD_POR_DESAJUSTE,
   ENERGIA_ENLACE_ATOMO,
   ESTABILIDAD_ATOMO,
   INTENTOS_DE_REACCION,
   LOTES_DE_QUIMICA,
   MAX_VECINOS,
   N_TIPOS_ATOMO,
+  PENALIZACION_POR_DESAJUSTE,
   ROTURA_POR_TEMPERATURA,
+  TOLERANCIA_DEL_CATALIZADOR,
   SUSTITUCION_POR_MIL,
   TOP_N_MOLECULAS,
   UNION_POR_MIL,
@@ -41,7 +44,7 @@ import { siguienteEntero } from './rng.js';
 import {
   atomoEn,
   atomoSuelto,
-  encajan,
+  desajuste,
   longitud,
   MOLECULA_VACIA,
   prefijo,
@@ -202,7 +205,12 @@ function hayCatalizador(estado: EstadoMundo, celda: number, a: number, b: number
 
     const largo = longitud(c);
     for (let i = 0; i + 1 < largo; i++) {
-      if (encajan(atomoEn(c, i), a) && encajan(atomoEn(c, i + 1), b)) return true;
+      if (
+        desajuste(atomoEn(c, i), a) <= TOLERANCIA_DEL_CATALIZADOR &&
+        desajuste(atomoEn(c, i + 1), b) <= TOLERANCIA_DEL_CATALIZADOR
+      ) {
+        return true;
+      }
     }
   }
   return false;
@@ -264,7 +272,11 @@ function reaccionarEnCelda(estado: EstadoMundo, celda: number): void {
       const corte = 1 + siguienteEntero(estado.rng, largoA - 1);
       const izquierda = atomoEn(a, corte - 1);
       const derecha = atomoEn(a, corte);
-      const aguante = ESTABILIDAD_ATOMO[izquierda]! + ESTABILIDAD_ATOMO[derecha]!;
+      // Un enlace mal emparejado aguanta menos: se rompe antes.
+      const malencaje = desajuste(izquierda, derecha);
+      const aguante =
+        (ESTABILIDAD_ATOMO[izquierda]! + ESTABILIDAD_ATOMO[derecha]!) /
+        (1 + malencaje * DEBILIDAD_POR_DESAJUSTE);
       const empujeTermico = temperatura > 0 ? temperatura * ROTURA_POR_TEMPERATURA : 0;
       const probabilidad = (empujeTermico / aguante) * 1000;
 
@@ -301,13 +313,18 @@ function reaccionarEnCelda(estado: EstadoMundo, celda: number): void {
 
     const cola = ultimoAtomo(a);
     const cabeza = primerAtomo(b);
-    if (!encajan(cola, cabeza)) continue;
 
     const producto = unir(a, b);
     if (producto === MOLECULA_VACIA) continue; // se pasaría del largo máximo
 
+    // Ya no hay puerta de "encaja o no encaja": encajar es cuestión de grado.
+    // La pareja perfecta se une fácil y las demás cada vez menos, pero ninguna
+    // es imposible — y de ahí sale que el mundo pueda explorar el espacio de
+    // cadenas en vez de cristalizar siempre en las mismas alternas.
+    const malencaje = desajuste(cola, cabeza);
+    const facilidad = 1 / (1 + malencaje * malencaje * PENALIZACION_POR_DESAJUSTE);
     const empuje = hayCatalizador(estado, celda, cola, cabeza) ? EMPUJE_DEL_CATALIZADOR : 1;
-    if (siguienteEntero(estado.rng, 1000) >= UNION_POR_MIL * empuje) continue;
+    if (siguienteEntero(estado.rng, 1000) >= UNION_POR_MIL * empuje * facilidad) continue;
 
     // Hay que sacar los dos reactivos antes de meter el producto, y si el
     // segundo falla hay que devolver el primero: si no, se perderían átomos.
@@ -319,7 +336,8 @@ function reaccionarEnCelda(estado: EstadoMundo, celda: number): void {
     anadir(estado, celda, producto, 1);
 
     // Formar un enlace suelta energía: calienta la celda.
-    const suelta = ENERGIA_ENLACE_ATOMO[cola]! + ENERGIA_ENLACE_ATOMO[cabeza]!;
+    // Un enlace flojo suelta menos energía que uno bien hecho.
+    const suelta = (ENERGIA_ENLACE_ATOMO[cola]! + ENERGIA_ENLACE_ATOMO[cabeza]!) * facilidad;
     estado.temperatura[celda] = estado.temperatura[celda]! + suelta * estado.escalaEnergiaQuimica;
 
     estado.reaccionesEsteTick++;

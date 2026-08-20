@@ -120,33 +120,54 @@ sigue conservándose exactamente con la difusión sobre la nueva tabla de vecino
 5. 30 fps en un móvil de gama media, con la simulación por debajo de su
    presupuesto.
 
-## Fase 2 — Química  ·  PASA EL CRITERIO, CON UN PERO GRANDE
+## Fase 2 — Química  ·  PASA EL CRITERIO · queda un tope diagnosticado
 
-**Resultado medido**, 12.000 ticks por semilla:
+**Lo que funciona, medido a 20.000 ticks por semilla:**
 
-- Átomos conservados exactos. La sopa no se para: unas 2.300 uniones por tick
-  sostenidas, sin caer a cero.
-- Entre 42 y 241 moléculas distintas vivas, de largo medio 2,7 átomos.
-- **Aparecen moléculas autocatalíticas en el 100 % de las semillas probadas**,
-  unas 36 directas y 3 parejas que se ayudan mutuamente, sin que nadie las
-  pusiera. Ejemplo: `EBEB` lleva dentro `EB`, que es justo lo que hace falta
-  para sujetar el enlace entre la B del final de un `EB` y la E del principio
-  del siguiente. Se ayuda a nacer a sí misma.
+- Átomos conservados exactos. La sopa no se para nunca.
+- **Aparecen moléculas autocatalíticas en el 100 % de las semillas.** `AFAF`
+  lleva dentro `AF`, que es justo la plantilla que sujeta el enlace entre la F
+  del final de un `AF` y la A del principio del siguiente: se ayuda a nacer.
+- El tick cuesta 4,4 ms de los 16 de presupuesto.
 
-**El pero, y es serio.** De las **811.020** cadenas que las reglas permitirían
-que fueran autocatalíticas, solo aparecen **36**, y son **exactamente las mismas
-en todas las semillas**. El mundo no explora: cristaliza siempre en los mismos
-patrones alternos simples (`EBEB`, `DCDC`, `CDC`).
+**La afinidad graduada abrió el mundo de par en par.** Antes cada átomo encajaba
+con exactamente uno y con ningún otro, así que solo podían crecer cadenas
+estrictamente alternas. Ahora encajar es cuestión de grado: la pareja perfecta
+se une fácil, las demás cada vez menos, **ninguna es imposible**. Y un enlace mal
+emparejado además es débil, así que las cadenas raras existen de paso en vez de
+quedarse como basura permanente.
 
-*Diagnóstico*: la regla de afinidad es de todo o nada — cada átomo encaja con
-exactamente uno y con ningún otro — así que **solo pueden crecer cadenas
-estrictamente alternas**. Cualquier cadena que no alterne es imposible de
-formar, y ahí se va el 99,99 % del espacio.
+| | antes (binaria) | ahora (graduada) |
+|---|---|---|
+| Moléculas distintas vivas | 42 – 241 | **7.472 – 7.770** |
+| Coste del tick | 5,8 ms | 4,4 ms |
 
-*Qué tocar, en este orden*: (1) afinidad graduada en vez de binaria, para que
-enlaces menos favorables sean improbables pero no imposibles; (2) si con eso no
-basta, subir el largo máximo de cadena; (3) por último, más tipos de átomo.
-**Lo que no se hace**: sembrar a mano moléculas interesantes.
+**El tope que queda, ya diagnosticado con números.** Las moléculas
+autocatalíticas siguen siendo 12–14 y casi las mismas en toda semilla. Y ahora
+se sabe por qué, que no era lo que parecía:
+
+1. Enumerando **todas** las cadenas posibles: de largo 3 solo 6 de 216 pueden
+   catalizarse a sí mismas; de largo 4, 102 de 1.296; de largo 8, cientos de
+   miles. **El mundo encuentra las 6 de largo 3 y 6 de largo 4 — o sea, las
+   encuentra casi todas.** No es que no explore.
+2. El largo medio de cadena está clavado en **2,22** y no se mueve ni doblando
+   la probabilidad de unión ni bajando la de rotura a la mitad.
+3. La causa está medida: **el 100 % de las ranuras del top-24 están ocupadas**
+   (61.486 de 61.488) y los dímeros las acaparan — 573.560 copias frente a
+   35.611 de largo 3. Una cadena larga es rara al nacer, así que la desalojan
+   antes de que pueda acumularse.
+
+Es exactamente el riesgo escrito en `RIESGOS.md` §2b antes de empezar: **el
+recorte de rendimiento está filtrando justo el fenómeno que la fase busca.**
+
+*Qué hacer, y es barato*: los dímeros no deberían competir por las ranuras. Con
+6 tipos de átomo **solo hay 36 dímeros posibles**, así que caben en su propio
+array denso — igual que los átomos sueltos — y las 24 ranuras quedan libres para
+cadenas de 3 en adelante. Si con eso el largo medio sube por encima de 4, se
+entra en la zona donde hay miles de autocatalíticas posibles y **empezarán a
+salir distintas en cada semilla**.
+
+*Lo que no se hace*: sembrar a mano moléculas interesantes.
 
 ---
 

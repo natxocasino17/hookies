@@ -576,11 +576,67 @@ export const ATOMOS_INICIALES_POR_TIPO = 160;
  */
 export const INTENTOS_DE_REACCION = 8;
 
-/** Cuánto multiplica la temperatura la probabilidad de que un enlace se rompa. */
-export const ROTURA_POR_TEMPERATURA = 0.018;
+/**
+ * Cuánto multiplica la temperatura la probabilidad de que un enlace se rompa.
+ *
+ * Medido con 0,018 y afinidad graduada: el largo medio de las cadenas caía de
+ * 2,77 a 2,11 y todo lo interesante eran dímeros. Al dejar de haber puerta de
+ * "encaja o no encaja" se forman muchos más enlaces flojos, y si además se
+ * rompen rápido, nada llega a crecer. Bajarlo deja que las cadenas bien hechas
+ * duren lo suficiente para construir algo encima.
+ */
+export const ROTURA_POR_TEMPERATURA = 0.0035;
 
-/** Probabilidad base, entre mil, de que dos moléculas que se encuentran se unan. */
-export const UNION_POR_MIL = 240;
+/**
+ * Cuánto penaliza que dos átomos no sean la pareja perfecta.
+ *
+ * La probabilidad de que se unan se divide por (1 + desajuste² · esto). Con 2,
+ * la pareja perfecta se une 1 vez de cada 1, la siguiente 1 de cada 3, y la peor
+ * 1 de cada 51. Raro, pero **nunca imposible**: ahí está la diferencia entre un
+ * mundo que explora y uno que cristaliza siempre en lo mismo.
+ */
+export const PENALIZACION_POR_DESAJUSTE = 2;
+
+/**
+ * Cuánto debilita el desajuste al enlace ya formado.
+ *
+ * Un enlace mal emparejado se rompe antes. No es una regla aparte: es la misma
+ * idea vista del otro lado, y es lo que impide que el mundo se llene de cadenas
+ * raras permanentes. Las cadenas raras existen, pero de paso.
+ *
+ * Sube a la vez que baja ROTURA_POR_TEMPERATURA, y a propósito: lo que se busca
+ * no es que se rompa menos todo, sino que **se rompa menos lo bien hecho y siga
+ * rompiéndose lo chapucero**. Si no, el mundo se llena de cadenas basura largas.
+ */
+export const DEBILIDAD_POR_DESAJUSTE = 1.6;
+
+/**
+ * Desajuste máximo que aún permite hacer de catalizador.
+ *
+ * Medido con 1: pasaban a contar como autocatalíticas cosas tan triviales como
+ * `DD` o `CC`, porque con holgura casi cualquier par de átomos hace de
+ * plantilla de casi cualquier enlace. Y si todo cataliza todo, "catalizador"
+ * deja de significar nada y el detector infla el resultado.
+ *
+ * Con 0 la plantilla tiene que ser el complemento exacto. Es exigente, pero con
+ * miles de moléculas distintas dando vueltas hay de sobra que lo cumplan — y
+ * cuando el detector dice "autocatalítica", quiere decir algo.
+ */
+export const TOLERANCIA_DEL_CATALIZADOR = 0;
+
+/**
+ * Probabilidad base, entre mil, de que dos moléculas que se encuentran se unan.
+ *
+ * Junto con ROTURA_POR_TEMPERATURA decide **el largo medio de las cadenas**, y
+ * eso resultó importar más que ninguna otra cosa. Enumerando todas las cadenas
+ * posibles: de largo 3 solo 6 de 216 pueden catalizarse a sí mismas, y de largo
+ * 4 son 102 de 1.296. Con el mundo parado en largo medio 2,2 solo alcanzaba las
+ * 12 primeras — y por eso salían siempre las mismas en todas las semillas.
+ *
+ * No era que el mundo no explorara: es que no llegaba a donde hay algo que
+ * explorar.
+ */
+export const UNION_POR_MIL = 620;
 
 /** Probabilidad base, entre mil, de que un átomo suelto sustituya a otro. */
 export const SUSTITUCION_POR_MIL = 40;

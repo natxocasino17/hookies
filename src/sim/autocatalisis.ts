@@ -23,11 +23,12 @@
  * el sitio es este archivo.
  */
 
-import { N_TIPOS_ATOMO, TOP_N_MOLECULAS } from './constants.js';
+import { N_TIPOS_ATOMO, TOLERANCIA_DEL_CATALIZADOR, TOP_N_MOLECULAS } from './constants.js';
 import type { EstadoMundo } from './estado.js';
 import {
   atomoEn,
   comoTexto,
+  desajuste,
   encajan,
   longitud,
   MOLECULA_VACIA,
@@ -43,7 +44,12 @@ import {
 function catalizaEnlace(catalizador: Molecula, a: number, b: number): boolean {
   const largo = longitud(catalizador);
   for (let i = 0; i + 1 < largo; i++) {
-    if (encajan(atomoEn(catalizador, i), a) && encajan(atomoEn(catalizador, i + 1), b)) return true;
+    if (
+      desajuste(atomoEn(catalizador, i), a) <= TOLERANCIA_DEL_CATALIZADOR &&
+      desajuste(atomoEn(catalizador, i + 1), b) <= TOLERANCIA_DEL_CATALIZADOR
+    ) {
+      return true;
+    }
   }
   return false;
 }
