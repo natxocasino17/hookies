@@ -36,6 +36,16 @@ Lo que eso significa en la práctica, punto por punto:
   pueda derribar**. Si uno solo se las arregla, nadie se junta nunca. La caza en
   grupo no se programa: se hace necesaria.
 
+Y una aclaración que llegó después, y que manda sobre la lista de arriba:
+
+> El fin no es que hablen. El fin es que vivan y convivan, y ver si evolucionan,
+> y a qué le tienen miedo.
+
+O sea: la lista de arriba son **ejemplos de cosas que podrían pasar**, no una
+lista de tareas pendientes. Si nunca hablan pero se juntan, se temen, cambian
+con las generaciones y heredan supersticiones, el proyecto funcionó. El idioma
+sería la guinda, no el examen.
+
 **El proyecto vale por una sola cosa: que lo que pase ahí dentro no lo haya
 escrito nadie.** Un resultado nulo honesto vale más que uno falso. Si algo no
 emerge, se dice y se propone qué parámetro tocar; no se escribe a mano.
@@ -51,17 +61,25 @@ correcto es **decirlo y proponer qué parámetro tocar**, no saltarse la regla.
 
 ## 0. El objetivo, para ordenar prioridades
 
-Lo que se busca es **interacción y lenguaje**: que las criaturas se junten, se
-avisen, inventen una señal y que esa señal signifique algo. Todo lo demás está
-subordinado.
+Lo que se busca es **poder mirar un mundo vivo**: que nazcan, coman, se maten,
+se junten, cambien con las generaciones, y que se pueda ver de qué tienen miedo
+y qué se les ocurre.
 
-Consecuencia operativa: **entre dos opciones de diseño gana siempre la que
-aumente la presión social**, aunque haga el mundo menos realista. Sobrevivir
-solo tiene que ser muy difícil; sobrevivir informado, mucho más fácil. Ese es
-el parámetro más importante del sistema.
+Que aparezca un idioma sería lo más espectacular que puede pasar, pero **no es
+la vara de medir**. Un mundo donde nadie habla y sin embargo pasan cosas es un
+éxito, no un fracaso. El lenguaje es uno de los nueve detectores, no el juez.
 
-Herramientas, construcción y objetos son secundarios. No se invierte esfuerzo
-ahí hasta que el canal de señales funcione.
+Consecuencia operativa, que sigue siendo la misma regla de siempre aunque ahora
+la justifique otra cosa: **entre dos opciones de diseño gana siempre la que
+produzca más interacción entre bichos**. Un bicho que se las arregla solo no
+tiene nada que ver con otro, y un mundo de ermitaños no da nada que mirar.
+Sobrevivir solo tiene que ser difícil; sobrevivir junto a otros, más fácil.
+
+Y el corolario que ordena el trabajo: **la capa de observación no es un extra,
+es la mitad del proyecto.** Si no se puede ver lo que pasa, no pasa.
+
+Herramientas, construcción y objetos siguen siendo secundarios: son cosas que
+pueden aparecer, no cosas en las que invertir esfuerzo.
 
 ---
 

@@ -6,7 +6,7 @@ resulta mala, se cambia acá y se anota; no se cambia en silencio dentro del
 código.
 
 Criterio único para desempatar, en orden:
-1. ¿Hace más probable que se hablen?
+1. ¿Da más que mirar? (más interacción entre bichos, más cosas que puedan pasar)
 2. ¿Sigue siendo cierto que nadie escribió el resultado?
 3. ¿Entra en el presupuesto?
 
@@ -59,8 +59,8 @@ alcanza la vista de la mayoría.
 **Por qué**: es la decisión más importante de la lista, porque de ella depende
 que haya algo que decir. Si el peligro solo pudiera venir de depredadores
 evolucionados, no habría forma de garantizar que existan, ni que sean letales,
-ni que sean frecuentes — y sin peligro que avisar, el canal de señales se queda
-mudo y el proyecto fracasa en su único objetivo.
+ni que sean frecuentes — y sin peligro, ni hay a qué tenerle miedo ni hay nada
+que avisar: se caen dos detectores de golpe.
 
 **Qué se pierde**: no es un bicho, y no se disfraza de bicho. Es clima que
 mata. Cuando la depredación evolucione sola entre criaturas —que puede pasar,
@@ -68,9 +68,11 @@ morder ya existe— mejor, pero la presión no depende de que ocurra.
 
 ---
 
-## D4 — Mundo chico: 64×64 y población densa
+## D4 — Mundo chico y población densa  ·  *revisada por D10*
 
-**Se elige**: empezar con un grid de 64×64 y del orden de 500 criaturas.
+**Se elige**: un mundo chico, del orden de 4.000 celdas, con unas 500 criaturas.
+La forma concreta la fija D10: dejó de ser un cuadrado de 64×64 y pasó a ser un
+planeta redondo de unas 2.500 celdas. Lo que sigue valiendo es el *tamaño*.
 
 **Por qué**: sirve dos veces. Entra en el presupuesto (128×128 con cerebros no
 entra), y sobre todo cumple lo que el proyecto pide: encuentros constantes. 500
@@ -142,3 +144,76 @@ formato va a cambiar mucho entre fases, así que los mundos creados antes de la
 fase 6 se marcan como desechables. La promesa de "nunca se borra un mundo"
 empieza a valer cuando el formato se estabiliza. Prefiero decirlo ahora a
 romper un mundo de meses más adelante.
+
+---
+
+## D9 — El fin es mirar, no que hablen
+
+**Se elige**: el proyecto se juzga por si se puede mirar un mundo vivo. El
+lenguaje pasa de ser el objetivo a ser **uno de los nueve detectores**.
+
+**Por qué**: es lo que se pidió, con estas palabras: *"el fin no es que hablen,
+es que vivan y convivan y ver si evolucionan, o a qué le tienen miedo"*. El
+documento original decía que el objetivo real era el lenguaje, y eso llevó a un
+protocolo con una sola hipótesis. Mandan las palabras nuevas.
+
+**El problema que esto crea, y cómo se resuelve**: "a ver qué pasa" no se puede
+comprobar. Si vale cualquier resultado, nunca me puedo equivocar, y entonces
+esto no es un experimento sino un salvapantallas. La salida no es volver a una
+sola pregunta: es tener **nueve detectores, cada uno con su medida escrita de
+antemano y con su nivel de azar al lado**.
+
+**La regla que impide hacer trampa con los nueve**: se reportan los nueve en
+cada corrida, incluidos los que no encontraron nada. Con nueve detectores,
+alguno va a parecer interesante por casualidad; enseñar solo ese es la forma más
+común de mentir con datos.
+
+**Qué se pierde**: nada del diseño. La presión social sigue siendo el criterio
+de desempate, porque un mundo de ermitaños tampoco da nada que mirar. Lo que
+cambia es la justificación, no la regla.
+
+**Qué se gana**: la capa de observación sube a prioridad máxima. Si el fin es
+ver, no poder ver es el fracaso principal.
+
+---
+
+## D10 — El mundo es un planeta redondo pequeño
+
+**Se elige**: en vez de una rejilla plana de 64×64, una esfera geodésica
+(icosaedro subdividido) de unas 2.500 celdas casi iguales, hexágonos con doce
+pentágonos. Un planeta chiquito entero, que se ve girar.
+
+**Por qué**: no es capricho estético. Cuatro cosas que en un mapa plano son
+parámetros que me invento, en una esfera son **geometría**, y este proyecto
+prefiere siempre la física al parámetro:
+
+- **No hay bordes.** Una rejilla plana tiene esquinas donde los bichos se
+  amontonan, o hay que envolverla en un donut, que es raro y encima invisible.
+  Una esfera no tiene borde ni costura.
+- **El día y la noche salen solos.** La esfera gira y el sol la ilumina de un
+  lado: la línea entre día y noche es una consecuencia, no una fórmula.
+- **Las estaciones también**, con inclinar el eje.
+- **Los polos son fríos** porque el sol les llega de lado. Sin fórmula de
+  temperatura por latitud.
+
+Y sirve al fin de D9: **se puede ver el mundo entero de un vistazo**, girándolo,
+en vez de pasear una cámara por un mapa. Si el fin es mirar, esto es mejor
+sitio desde donde mirar.
+
+**Qué cuesta**: las celdas dejan de ser (x, y) y pasan a ser una lista con su
+tabla de vecinos, que se calcula una vez al crear el mundo. Cada celda tiene
+seis vecinos en vez de cuatro (doce celdas tienen cinco). El código de la fase 0
+sobrevive casi entero: la materia sigue siendo un array de enteros, lo único que
+cambia es cómo se recorren los vecinos al difundir.
+
+**Lo que NO se hace**: una rejilla de latitud y longitud. Las celdas se
+encogerían hasta desaparecer en los polos y la difusión daría resultados
+distintos según la latitud, que es un error de física disfrazado de comodidad.
+
+**Qué se pierde**: menos sitio para que dos grupos se aíslen y diverjan. Se
+compensa con barreras de terreno —océano, montaña— en vez de con distancia, que
+es lo que ya se había decidido en D4.
+
+**Pendiente de medir**: los 0,037 ms por tick medidos en la fase 0 son sobre la
+rejilla cuadrada. Con tabla de vecinos habrá que volver a medirlo; se espera
+algo peor por el acceso a memoria menos ordenado, y hay que comprobar cuánto.

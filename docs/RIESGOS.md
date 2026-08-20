@@ -267,7 +267,87 @@ de antemano.
 
 ---
 
-## 10. Lo que sí me parece sólido
+## 10. No hay objetos, así que la tecnología es imposible
+
+**El problema.** Uno de los cinco verbos es agarrar y soltar. Pero el mundo
+contiene celdas, cuerpos, cadáveres y marcas del suelo, y nada más. No existe
+"un objeto": una cosa suelta en el suelo que se pueda coger, llevar y dejar en
+otro sitio.
+
+**Por qué importa ahora.** Se pidió ver si avanzan tecnológicamente. Sin cosas
+que coger, eso no es improbable: es imposible. Y para que la tecnología pueda
+aparecer, los objetos además tienen que **pesar y servir**: que llevar algo duro
+suba el daño del mordisco, que llevar algo pesado cueste energía, que llevar
+algo ardiendo lleve el fuego, que soltarlo tape el paso.
+
+**Qué propongo.** Un objeto **no es un tipo de una lista** —eso rompería §1.3—:
+es un trozo de materia con una composición, igual que una molécula es su cadena.
+Duro porque le tocaron átomos duros; arde porque le tocaron átomos que arden.
+Nadie escribe "piedra" en ninguna parte. Los trozos salen de lo que ya hay:
+sólidos que precipita la química, restos de cadáveres, ceniza del fuego. Y
+partir un trozo grande en dos es **morderlo**: no hace falta ningún verbo nuevo.
+
+**Cómo se mediría**: un linaje coge habitualmente trozos de cierta composición
+antes de hacer cierta cosa, por encima de lo que daría el azar de tropezarse con
+ellos.
+
+**El riesgo del riesgo**: llevar cuesta energía. Si llevar nunca compensa, nadie
+lleva nada y esto no pasa jamás. Es un número a ajustar —cuánto suma el mordisco
+contra cuánto pesa— y ajustarlo es legítimo porque es física, no es premiar un
+comportamiento.
+
+**Coste**: es una pieza nueva de verdad y toca las fases 1, 2 y 3. Barata ahora,
+cara más adelante.
+
+---
+
+## 11. Las heridas no se curan, así que la medicina no quiere decir nada
+
+**El problema.** Un cuerpo tiene energía, daño y edad. La energía sube y baja.
+**El daño solo sube.** No hay nada en todo el diseño que baje el daño de una
+criatura.
+
+**Por qué importa ahora.** Se pidió ver si avanzan médicamente. Una medicina es
+algo que cura, y en un mundo donde las heridas no cierran nunca no hay nada que
+una medicina pueda hacer. No es difícil: es que la palabra no significa nada.
+
+**Qué propongo.** Dos cosas, las dos baratas:
+
+1. **Que curarse exista**: el cuerpo puede gastar energía y materia en bajarse el
+   daño. Es fisiología normal, cicatrizar cuesta calorías.
+2. **Que algunas moléculas cambien esa velocidad.** Y aquí no hay que inventar
+   nada: el genoma **ya** decide qué reacciones sabe catalizar cada criatura, que
+   es lo que decide qué le alimenta y qué le envenena. Curarse es una reacción
+   más.
+
+**La consecuencia buena**: la misma planta es medicina para un linaje y veneno
+para otro, no porque esté escrito sino porque tienen química distinta. Dos
+poblaciones vecinas con dos farmacopeas incompatibles, ninguna escrita a mano.
+
+**Y la mejor**: la medicina puede estar equivocada. Un linaje puede aprender
+"cuando duele, comer lo azul", que lo azul no haga nada, y pasarlo por
+imitación. Es una superstición médica y se propaga como una cultura. El detector
+tiene que medir las dos: las medicinas que funcionan y las que no.
+
+**Coste**: casi gratis. Es un solo enlace entre la química y el cuerpo, y cabe
+en la fase 3.
+
+---
+
+## 12. Lo que hay debajo de los dos anteriores
+
+Los agujeros 10 y 11 son la misma cosa vista dos veces: **estaba diseñando un
+mundo donde a las criaturas les pasan cosas, pero no un mundo al que las
+criaturas le puedan hacer cosas**. Tienen un verbo para agarrar y casi nada que
+agarrar; tienen un verbo para morder y nada que morder pueda arreglar.
+
+Conviene tenerlo como prueba de olfato al diseñar cada capa nueva: *¿esto que
+estoy añadiendo es solo algo que les ocurre, o es también algo con lo que pueden
+hacer algo?*
+
+---
+
+## 13. Lo que sí me parece sólido
 
 Para que la lista no parezca una queja general: la arquitectura (worker + tick
 fijo + estado serializable), el determinismo como requisito de primera clase, el
@@ -284,12 +364,12 @@ clase mueren por no tener el laboratorio o por ajustar a ojo.
 Las tres primeras son las que bloquean; las demás las puedo resolver como
 propongo y revisás después.
 
-1. **El puente química → cuerpos** (punto 1): ¿aceptás que sea una regla de
-   transición explícita y documentada, o preferís que el proyecto se quede en
-   química hasta encontrar algo mejor?
-2. **El genoma largo** (punto 3): ¿aceptás dos longitudes máximas de cadena, con
-   el genoma fuera de la sopa?
-3. **Los depredadores** (punto 8): ¿amenaza física del mundo, o lectura estricta
-   asumiendo que las fases 4–5 pueden quedar mudas?
-4. **Grid 64×64 en vez de 128×128** (punto 4): lo doy por bueno salvo que digas
-   lo contrario, porque además sirve al objetivo de §1.1.
+Los puntos 1, 3, 8 y 4 quedaron resueltos en `DECISIONES.md` (D1, D2, D3, D4 y
+D10). Lo que sigue abierto:
+
+1. **Los objetos** (punto 10): son la pieza que falta para que la tecnología sea
+   siquiera posible, y hay que decidir si entran, porque tocan tres fases.
+2. **Curarse** (punto 11): más barato y más claro. Salvo objeción, entra en la
+   fase 3 tal como está propuesto.
+3. **El top-N contra los ciclos raros** (punto 2b): esto solo lo puede contestar
+   el laboratorio, midiendo con y sin depósito de reingreso.
