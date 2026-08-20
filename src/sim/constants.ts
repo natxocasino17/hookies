@@ -400,6 +400,87 @@ export const RETENCION_DEL_SUELO = 20;
 export const ALTURA_POR_GOTA = 0.0005;
 
 // ---------------------------------------------------------------------------
+// Las plantas
+//
+// AVISO (decisión D19): esto es andamio provisional. Un hongo es un ser que no
+// se mueve y come materia muerta; una planta, uno que no se mueve y come luz.
+// Los dos tendrían que salir del mismo espacio de genomas que las criaturas, y
+// tener "plantas" por un lado y "bichos" por otro es partir el árbol de la vida
+// a mano. Cuando lleguen los cuerpos de la fase 3, esto se sustituye.
+//
+// Aun así ya evolucionan: las semillas heredan los genes de su madre con
+// erratas, así que los linajes se adaptan al clima donde les tocó caer.
+// ---------------------------------------------------------------------------
+
+/** Tope de plantas vivas a la vez. Solo para que la memoria no se dispare. */
+export const MAX_PLANTAS = 16000;
+
+/** Plantas que caben en una celda. Cuando está llena, las semillas no prenden. */
+export const MAX_PLANTAS_POR_CELDA = 12;
+
+/** Genes que lleva una planta. */
+export const GENES_PLANTA = 8;
+
+/** Plantas con las que arranca el mundo, repartidas por la tierra. */
+export const PLANTAS_INICIALES = 400;
+
+/**
+ * Materia con la que nace una semilla. Sale del cuerpo de la madre.
+ * Con 4 una mala racha de diez ticks se llevaba por delante a cualquier brote.
+ */
+export const MASA_DE_SEMILLA = 10;
+
+/** Masa a partir de la cual una planta puede dar fruto. */
+export const MASA_PARA_FRUCTIFICAR = 60;
+
+/** Fruto acumulado que hace falta para soltar una semilla. */
+export const FRUTO_POR_SEMILLA = 30;
+
+/**
+ * Cuánta materia gana una planta por tick en las mejores condiciones.
+ * Se multiplica por lo bien que le va: luz, agua y temperatura.
+ */
+export const CRECIMIENTO_MAXIMO = 3;
+
+/** Agua que consume una planta por cada unidad de materia que gana. */
+export const AGUA_POR_CRECIMIENTO = 2;
+
+/**
+ * Por debajo de esta viabilidad la planta no crece: se consume.
+ * Es lo que mata los bosques cuando el clima cambia debajo de ellos.
+ *
+ * Ojo: la viabilidad es agua por temperatura, SIN la luz. Metiendo la luz aquí,
+ * las plantas se morían de hambre todas las noches y el planeta se quedaba
+ * pelado en menos de un año.
+ */
+export const IDONEIDAD_DE_SUPERVIVENCIA = 0.08;
+
+/** Materia que pierde por tick una planta a la que no le van bien las cosas. */
+export const DESGASTE_POR_INANICION = 1;
+
+/** Ticks que vive una planta antes de morir de vieja, a igualdad de suerte. */
+export const LONGEVIDAD_PLANTA = 90000;
+
+/**
+ * Cómo se traducen los genes de una planta a lo que su cuerpo puede hacer.
+ * Son el rango de cada perilla, no valores de ninguna especie concreta.
+ */
+/** Sed mínima, y cuánto sube por cada punto del gen. */
+export const SED_BASE = 10;
+export const SED_POR_GEN = 0.8;
+/** Rango de temperaturas que un linaje puede llegar a preferir, en grados. */
+export const RANGO_TEMPERATURA_PREFERIDA = 40;
+/** Tolerancia mínima a la temperatura, y cuánto la ensancha el gen. */
+export const TOLERANCIA_BASE = 4;
+export const TOLERANCIA_POR_GEN = 26;
+/** Masa mínima de una planta, y cuánto sube el tope por cada punto del gen. */
+export const MASA_MINIMA_PLANTA = 20;
+export const MASA_POR_GEN_TAMANO = 3;
+
+/** Probabilidad, entre mil, de que un gen mute al pasar a la semilla. */
+export const MUTACION_POR_MIL = 55;
+
+// ---------------------------------------------------------------------------
 // Telemetría
 // ---------------------------------------------------------------------------
 

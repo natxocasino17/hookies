@@ -37,6 +37,8 @@ function enviarInstantanea(): void {
       humedadAire: i.humedadAire,
       flujoAgua: i.flujoAgua,
       lluvia: i.lluvia,
+      vegetacion: i.vegetacion,
+      vegetacionTinte: i.vegetacionTinte,
     },
     [
       i.altura.buffer,
@@ -45,6 +47,8 @@ function enviarInstantanea(): void {
       i.humedadAire.buffer,
       i.flujoAgua.buffer,
       i.lluvia.buffer,
+      i.vegetacion.buffer,
+      i.vegetacionTinte.buffer,
     ],
   );
   contar({ tipo: 'TELEMETRIA', ultima: mundo.telemetria.ultima });

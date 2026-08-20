@@ -7,7 +7,8 @@
  * laboratorio sea lo mismo que después se ve en pantalla.
  */
 
-import { PRESUPUESTO_MS_POR_TICK } from './constants.js';
+import { GENES_PLANTA, MAX_PLANTAS, PRESUPUESTO_MS_POR_TICK } from './constants.js';
+import { GEN_TEMPERATURA } from './plantas.js';
 import {
   crearEstado,
   deserializar,
@@ -31,6 +32,14 @@ export interface Instantanea {
   humedadAire: Int32Array;
   flujoAgua: Int32Array;
   lluvia: Int32Array;
+  /** Materia vegetal en cada celda. De aquí sale el tamaño de los árboles. */
+  vegetacion: Int32Array;
+  /**
+   * Gen de temperatura medio de las plantas de cada celda, de 0 a 255.
+   * Es el color de la vegetación: dos linajes adaptados a climas distintos se
+   * ven de tonos distintos, así que la divergencia se ve con los ojos.
+   */
+  vegetacionTinte: Uint8Array;
 }
 
 /**
@@ -123,7 +132,32 @@ export class Mundo {
       humedadAire: new Int32Array(this.estado.humedadAire),
       flujoAgua: new Int32Array(this.estado.flujoAgua),
       lluvia: new Int32Array(this.estado.lluvia),
+      ...this.resumirVegetacion(),
     };
+  }
+
+  /**
+   * Junta las plantas de cada celda en dos números: cuánta materia vegetal hay
+   * y de qué tono es. El dibujo no necesita saber de plantas una por una.
+   */
+  private resumirVegetacion(): { vegetacion: Int32Array; vegetacionTinte: Uint8Array } {
+    const vegetacion = new Int32Array(this.estado.nCeldas);
+    const sumaTinte = new Float64Array(this.estado.nCeldas);
+    const cuenta = new Int32Array(this.estado.nCeldas);
+
+    for (let p = 0; p < MAX_PLANTAS; p++) {
+      const celda = this.estado.plantaCelda[p]!;
+      if (celda < 0) continue;
+      vegetacion[celda] = vegetacion[celda]! + this.estado.plantaMasa[p]!;
+      sumaTinte[celda] = sumaTinte[celda]! + this.estado.plantaGenoma[p * GENES_PLANTA + GEN_TEMPERATURA]!;
+      cuenta[celda] = cuenta[celda]! + 1;
+    }
+
+    const vegetacionTinte = new Uint8Array(this.estado.nCeldas);
+    for (let i = 0; i < this.estado.nCeldas; i++) {
+      if (cuenta[i]! > 0) vegetacionTinte[i] = (sumaTinte[i]! / cuenta[i]!) | 0;
+    }
+    return { vegetacion, vegetacionTinte };
   }
 
   aBytes(): Uint8Array {

@@ -66,7 +66,14 @@ worker.onmessage = (evento: MessageEvent<NoticiaDelWorker>) => {
       escribir('tierra', `${Math.round((tierra / noticia.nCeldas) * 100)} % de ${noticia.nCeldas}`);
       escribir('temperatura', `${(sumaTemp / noticia.nCeldas).toFixed(1)}°`);
       escribir('hielo', `${Math.round((helado / noticia.nCeldas) * 100)} %`);
+      let vegetadas = 0;
+      let masaVeg = 0;
+      for (let i = 0; i < noticia.nCeldas; i++) {
+        if (noticia.vegetacion[i]! > 0) vegetadas++;
+        masaVeg += noticia.vegetacion[i]!;
+      }
       escribir('rios', String(rios));
+      escribir('bosque', `${vegetadas} celdas · ${masaVeg.toLocaleString('es')}`);
       document.body.classList.add('listo');
       break;
     }

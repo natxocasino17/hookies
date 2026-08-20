@@ -16,6 +16,7 @@ import type { EstadoMundo } from './estado.js';
 import type { Geometria } from './geodesica.js';
 import { siguienteU32 } from './rng.js';
 import { avanzarElClima } from './clima.js';
+import { avanzarLasPlantas } from './plantas.js';
 
 /**
  * Reparte materia entre celdas vecinas del planeta.
@@ -58,5 +59,6 @@ export function avanzarUnTick(estado: EstadoMundo, geo: Geometria): void {
   const alReves = (siguienteU32(estado.rng) & 1) === 1;
   difundirMateria(estado, geo, alReves);
   avanzarElClima(estado, geo, alReves);
+  avanzarLasPlantas(estado, geo);
   estado.tick += 1;
 }

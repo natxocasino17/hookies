@@ -10,12 +10,15 @@
 import { describe, expect, it } from 'vitest';
 import { celdasDelNivel, construirGeometria } from '../src/sim/geodesica.js';
 import {
+  GENES_PLANTA,
+  MAX_PLANTAS,
   MAX_VECINOS,
   NIVEL_SUBDIVISION,
   TICKS_POR_ANO,
   TICKS_POR_DIA,
 } from '../src/sim/constants.js';
-import { crearEstado, geometriaDe } from '../src/sim/estado.js';
+import { crearEstado, geometriaDe, materiaTotal } from '../src/sim/estado.js';
+import { GEN_TEMPERATURA } from '../src/sim/plantas.js';
 import { avanzarUnTick } from '../src/sim/tick.js';
 import { aguaTotal, direccionDelSol } from '../src/sim/clima.js';
 import { fraccionDeTierra } from '../src/sim/terreno.js';
@@ -245,5 +248,67 @@ describe('el viento', () => {
     const llueve = [...Array(estado.nCeldas).keys()].filter((i) => estado.lluvia[i]! > 0).length;
     expect(llueve / estado.nCeldas).toBeLessThan(0.7);
     expect(llueve).toBeGreaterThan(0);
+  });
+});
+
+describe('las plantas', () => {
+  it('la masa del mundo no cambia aunque crezcan, se reproduzcan y se mueran', () => {
+    // Este test cazó un escape real: la semilla se cobraba al suelo pero además
+    // se restaba del fruto, así que cada siembra hacía desaparecer treinta
+    // unidades de materia. El mundo pasó de 2.562.000 a 80.040 en doce años.
+    // Leyendo el código no se veía.
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    const inicial = materiaTotal(estado);
+    for (let i = 0; i < 6_000; i++) avanzarUnTick(estado, geo);
+    expect(estado.plantasVivas).toBeGreaterThan(0);
+    expect(materiaTotal(estado)).toBe(inicial);
+  });
+
+  it('ni la materia del suelo ni la masa de una planta se van a negativo', () => {
+    const estado = crearEstado(7);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < 3000; i++) avanzarUnTick(estado, geo);
+    for (let i = 0; i < estado.nCeldas; i++) {
+      expect(estado.materia[i]!, `celda ${i}`).toBeGreaterThanOrEqual(0);
+    }
+    for (let p = 0; p < MAX_PLANTAS; p++) {
+      if (estado.plantaCelda[p]! < 0) continue;
+      expect(estado.plantaMasa[p]!, `planta ${p}`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('no se extinguen ni cubren el planeta entero', () => {
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < TICKS_POR_ANO; i++) avanzarUnTick(estado, geo);
+    expect(estado.plantasVivas).toBeGreaterThan(100);
+    expect(estado.plantasVivas).toBeLessThan(MAX_PLANTAS);
+  });
+
+  it('los linajes se adaptan al clima donde les tocó caer', () => {
+    // Nadie mueve una planta a un sitio mejor: la semilla cae donde cae. Lo que
+    // pasa es que las que no encajan se mueren y las que sí dejan más semillas.
+    // Si esto fallara, la herencia con erratas no estaría haciendo nada.
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < TICKS_POR_ANO * 2; i++) avanzarUnTick(estado, geo);
+
+    const calidas: number[] = [];
+    const frias: number[] = [];
+    for (let p = 0; p < MAX_PLANTAS; p++) {
+      const celda = estado.plantaCelda[p]!;
+      if (celda < 0) continue;
+      const latitud = Math.abs(geo.centro[celda * 3 + 1]!);
+      const gen = estado.plantaGenoma[p * GENES_PLANTA + GEN_TEMPERATURA]!;
+      if (latitud < 0.35) calidas.push(gen);
+      else if (latitud > 0.6) frias.push(gen);
+    }
+
+    expect(calidas.length).toBeGreaterThan(30);
+    expect(frias.length).toBeGreaterThan(30);
+    const media = (l: number[]) => l.reduce((s, v) => s + v, 0) / l.length;
+    // Las del trópico prefieren más calor que las de latitudes altas.
+    expect(media(calidas)).toBeGreaterThan(media(frias) + 8);
   });
 });

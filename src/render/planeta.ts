@@ -112,6 +112,7 @@ export class VistaPlaneta {
   private trozos: Trozos | null = null;
   private terreno: THREE.Mesh | null = null;
   private nubes: THREE.InstancedMesh | null = null;
+  private arboles: THREE.InstancedMesh | null = null;
   private geo: Geometria | null = null;
   private nivelDibujado = -1;
 
@@ -150,9 +151,11 @@ export class VistaPlaneta {
     humedadAire: Int32Array;
     flujoAgua: Int32Array;
     lluvia: Int32Array;
+    vegetacion: Int32Array;
+    vegetacionTinte: Uint8Array;
   }): void {
     if (this.nivelDibujado !== inst.nivel) this.construirMundo(inst.nivel, inst.altura);
-    if (!this.trozos || !this.geo || !this.nubes) return;
+    if (!this.trozos || !this.geo || !this.nubes || !this.arboles) return;
 
     // --- Repintar cada celda con lo que dicen sus números ---------------------
     const colores = this.trozos.malla.getAttribute('color') as THREE.BufferAttribute;
@@ -217,6 +220,46 @@ export class VistaPlaneta {
     for (let i = dibujadas; i < this.geo.nCeldas; i++) this.nubes.setMatrixAt(i, matriz);
     this.nubes.instanceMatrix.needsUpdate = true;
 
+    // --- Los árboles son la materia vegetal que hay en cada celda -------------
+    //
+    // El tamaño es la masa que tienen las plantas ahí, y el color sale del gen
+    // de temperatura del linaje que domina la celda. Así, dos bosques adaptados
+    // a climas distintos se ven de tonos distintos: la divergencia de linajes
+    // se ve con los ojos, sin abrir ningún menú.
+    let arboles = 0;
+    const tono = new THREE.Color();
+    for (let celda = 0; celda < this.geo.nCeldas; celda++) {
+      const masa = inst.vegetacion[celda]!;
+      if (masa < 12) continue;
+      const alto = 0.010 + Math.min(0.030, masa * 0.00018);
+      const r = radioDeCelda(inst.altura[celda]!, RADIO_PLANETA) + alto * 0.5;
+      sitio.set(
+        this.geo.centro[celda * 3]! * r,
+        this.geo.centro[celda * 3 + 1]! * r,
+        this.geo.centro[celda * 3 + 2]! * r,
+      );
+      // El árbol se pone de pie: apunta hacia fuera del planeta.
+      const arriba = new THREE.Vector3(
+        this.geo.centro[celda * 3]!,
+        this.geo.centro[celda * 3 + 1]!,
+        this.geo.centro[celda * 3 + 2]!,
+      );
+      const giro = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), arriba);
+      escala.set(alto * 0.75, alto, alto * 0.75);
+      matriz.compose(sitio, giro, escala);
+      this.arboles!.setMatrixAt(arboles, matriz);
+
+      // Del verde frío al verde cálido, según a qué clima está adaptado.
+      const calidez = inst.vegetacionTinte[celda]! / 255;
+      tono.setRGB(0.10 + calidez * 0.36, 0.34 + calidez * 0.22, 0.13 + calidez * 0.05);
+      this.arboles!.setColorAt(arboles, tono);
+      arboles++;
+    }
+    matriz.compose(vacio, sinRotar, new THREE.Vector3(0, 0, 0));
+    for (let i = arboles; i < this.geo.nCeldas; i++) this.arboles!.setMatrixAt(i, matriz);
+    this.arboles!.instanceMatrix.needsUpdate = true;
+    if (this.arboles!.instanceColor) this.arboles!.instanceColor.needsUpdate = true;
+
     // --- El sol, donde toca ---------------------------------------------------
     const d = direccionDelSol(inst.tick);
     this.sol.position.set(d[0] * 12, d[1] * 12, d[2] * 12);
@@ -254,6 +297,17 @@ export class VistaPlaneta {
     );
     this.nubes.frustumCulled = false;
     this.pivote.add(this.nubes);
+
+    if (this.arboles) this.pivote.remove(this.arboles);
+    // Un cono por celda con vegetación. Miles de instancias son un solo dibujo
+    // para la tarjeta gráfica: los árboles no son lo caro de este proyecto.
+    this.arboles = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(0.5, 1, 6),
+      new THREE.MeshLambertMaterial({ flatShading: true }),
+      geo.nCeldas,
+    );
+    this.arboles.frustumCulled = false;
+    this.pivote.add(this.arboles);
 
     this.nivelDibujado = nivel;
   }

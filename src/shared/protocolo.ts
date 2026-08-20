@@ -33,6 +33,8 @@ export type NoticiaDelWorker =
       humedadAire: Int32Array;
       flujoAgua: Int32Array;
       lluvia: Int32Array;
+      vegetacion: Int32Array;
+      vegetacionTinte: Uint8Array;
     }
   | { tipo: 'TELEMETRIA'; ultima: Muestra | null }
   | { tipo: 'GUARDADO'; bytes: Uint8Array }

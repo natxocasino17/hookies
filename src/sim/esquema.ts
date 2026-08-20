@@ -12,8 +12,16 @@
  * para siempre empieza a valer cuando el formato se estabilice.
  */
 
-/** Versión actual del formato. Se sube en cada cambio incompatible. */
-export const VERSION_ESQUEMA = 1;
+/**
+ * Versión actual del formato. Se sube en cada cambio incompatible.
+ *
+ * v2: la cabecera guarda el cursor de búsqueda de huecos de planta. Sin él,
+ * cargar un mundo hacía que las semillas cayeran en huecos distintos y el futuro
+ * dejaba de ser el mismo. No lleva migración desde la v1 a propósito: la v1
+ * nunca llegó a guardarse en ningún disco — la persistencia es de la fase 6 —
+ * así que no hay ningún mundo que rescatar.
+ */
+export const VERSION_ESQUEMA = 2;
 
 /** Marca al principio del archivo, para no intentar abrir cualquier cosa. */
 export const MARCA_ARCHIVO = 0x484f4f4b; // "HOOK"
