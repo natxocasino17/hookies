@@ -1,0 +1,767 @@
+<title>Protocolo Hookies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground:    #e9ebe6;
+    --surface:   #f5f6f3;
+    --surface-2: #dee3db;
+    --ink:       #171d1a;
+    --ink-soft:  #3d4844;
+    --muted:     #6d7c75;
+    --line:      #c6cec5;
+    --senal:     #0c7a78;
+    --peligro:   #a33f2e;
+
+    --display: "Newsreader", Georgia, "Times New Roman", serif;
+    --body:    "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #101513;
+      --surface:   #171e1b;
+      --surface-2: #202926;
+      --ink:       #dfe6e1;
+      --ink-soft:  #b3bfb8;
+      --muted:     #7e8f87;
+      --line:      #2d3835;
+      --senal:     #4ecdc4;
+      --peligro:   #e28472;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #101513;
+    --surface:   #171e1b;
+    --surface-2: #202926;
+    --ink:       #dfe6e1;
+    --ink-soft:  #b3bfb8;
+    --muted:     #7e8f87;
+    --line:      #2d3835;
+    --senal:     #4ecdc4;
+    --peligro:   #e28472;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    width: min(52rem, 100%);
+    margin-inline: auto;
+    padding: 4rem 1.25rem 6rem;
+    display: grid;
+    gap: 4rem;
+  }
+
+  /* Cada sección cuelga su etiqueta en el margen; los esquemas cruzan entero. */
+  section {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 38rem);
+    gap: 0 2rem;
+    align-content: start;
+  }
+  section > * { grid-column: 2; }
+  section > .eyebrow { grid-column: 1; grid-row: 1; }
+  section > figure, section > .full { grid-column: 1 / -1; }
+
+  @media (max-width: 54rem) {
+    section { grid-template-columns: minmax(0, 1fr); }
+    section > *, section > .eyebrow, section > figure, section > .full { grid-column: 1; }
+    section > .eyebrow { grid-row: auto; margin-bottom: 0.5rem; }
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 0.6rem;
+    line-height: 1.4;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 0.6rem;
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 1.7rem;
+    line-height: 1.2;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    margin: 0 0 0.9rem;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 2rem 0 0.6rem;
+  }
+
+  p { margin: 0 0 1.1rem; color: var(--ink-soft); }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--ink); font-weight: 600; }
+  em.senal { color: var(--senal); font-style: normal; font-weight: 500; }
+  em.peligro { color: var(--peligro); font-style: normal; font-weight: 500; }
+
+  .lede {
+    font-family: var(--display);
+    font-size: 1.3rem;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .rule { height: 1px; background: var(--line); border: 0; margin: 0; }
+
+  /* La hipótesis, que es lo único que se pone a prueba. */
+  .hipotesis {
+    border-left: 2px solid var(--senal);
+    padding: 0.2rem 0 0.2rem 1.4rem;
+    margin: 0 0 1.4rem;
+  }
+  .hipotesis .rotulo {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--senal);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .hipotesis p {
+    font-family: var(--display);
+    font-size: 1.22rem;
+    line-height: 1.45;
+    color: var(--ink);
+    margin: 0;
+  }
+  .nula { border-left-color: var(--muted); }
+  .nula .rotulo { color: var(--muted); }
+  .nula p { font-size: 1.08rem; color: var(--ink-soft); }
+
+  figure {
+    margin: 1.5rem 0 0.5rem;
+    display: grid;
+    gap: 0.75rem;
+  }
+  figure svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    color: var(--ink);
+  }
+  figure svg .m       { fill: var(--muted); }
+  figure svg .s       { fill: var(--senal); }
+  figure svg .p       { fill: var(--peligro); }
+  figure svg .inv     { fill: var(--surface); }
+  figure svg .st-m    { stroke: var(--muted); }
+  figure svg .st-s    { stroke: var(--senal); }
+  figure svg .st-p    { stroke: var(--peligro); }
+  figure svg .azar    { fill: var(--surface-2); stroke: var(--muted); }
+  figure svg .campana { fill: var(--line); fill-opacity: 0.45; stroke: var(--muted); }
+
+  .lienzo {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  figcaption {
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 40rem;
+  }
+
+  ul { margin: 0 0 1.1rem; padding-left: 1.1rem; color: var(--ink-soft); }
+  li { margin-bottom: 0.4rem; }
+  li::marker { color: var(--muted); }
+
+  .tabla-envoltura { overflow-x: auto; margin: 1.2rem 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 34rem;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.7rem 0.9rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom-color: var(--ink-soft);
+  }
+  td:first-child { font-family: var(--mono); font-size: 0.8rem; color: var(--ink); white-space: nowrap; }
+  td { color: var(--ink-soft); }
+
+  /* Dos columnas: lo que se puede tocar, y lo que no. */
+  .par {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1.5rem;
+    margin: 1.2rem 0;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1.1rem 1.2rem;
+  }
+  .panel.prohibido { border-color: var(--peligro); }
+  .panel h4 {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 0.7rem;
+    color: var(--senal);
+    font-weight: 500;
+  }
+  .panel.prohibido h4 { color: var(--peligro); }
+  .panel ul { margin: 0; font-size: 0.9rem; }
+
+  footer {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.7;
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+  }
+
+  a { color: var(--senal); }
+  :focus-visible { outline: 2px solid var(--senal); outline-offset: 3px; }
+</style>
+
+<main>
+
+  <section>
+    <p class="eyebrow">Protocolo<br>v1</p>
+    <h1>Un experimento sobre si aparece una palabra</h1>
+    <p class="lede">Esto no es un juego con un mundo simulado dentro. Es un experimento, y como todo experimento de verdad se diseña <strong>antes</strong> de correrlo: con una hipótesis que puede salir falsa, controles que la puedan tumbar, y un criterio de fracaso escrito de antemano.</p>
+    <p>Un mundo con bichos que no saben nada. La pregunta es si, con el tiempo, llegan solos a avisarse de las cosas. Si aparece el fuego y aparece un ruido que quiere decir fuego. Y lo único que hace que valga la pena preguntarlo es que la respuesta pueda ser que no.</p>
+    <p>Todo lo que sigue está escrito para que, cuando mire los resultados, no me pueda engañar a mí mismo.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">1<br>La pregunta</p>
+    <h2>Lo que se pone a prueba</h2>
+
+    <div class="hipotesis">
+      <span class="rotulo">Hipótesis</span>
+      <p>En un mundo donde la información está repartida de forma desigual, donde vivir solo es mucho peor que vivir acompañado, y donde hacer ruido cuesta energía, las criaturas acabarán emitiendo señales que dependen de lo que está pasando — sin que nadie premie nunca el hecho de emitirlas.</p>
+    </div>
+
+    <div class="hipotesis nula">
+      <span class="rotulo">Hipótesis nula · el resultado por defecto</span>
+      <p>Las señales se quedan en ruido para siempre. Se emiten, pero no tienen nada que ver con lo que ocurre alrededor, y ningún bicho vive más por escucharlas.</p>
+    </div>
+
+    <p>La nula es el resultado que sale si no hago nada bien, y es un resultado perfectamente publicable. La trampa que quiero evitar es la contraria: mirar unos ruidos agrupados en el gráfico, decidir que eso es un idioma, y no comprobarlo.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">2<br>El mundo</p>
+    <h2>Cinco capas, cada una apoyada en la de abajo</h2>
+    <p>Ninguna capa sabe nada de la de arriba. La química no sabe que va a haber cuerpos; los cuerpos no saben que van a tener algo que decirse. Cada una solo pone las condiciones para que la siguiente <em class="senal">pueda</em> existir.</p>
+
+    <figure>
+      <div class="lienzo">
+        <svg viewBox="0 0 800 492" role="img" aria-label="Las cinco capas del mundo, de la física abajo a las señales arriba, cada una entregando algo a la de encima, con la observación al margen como microscopio externo.">
+          <defs>
+            <marker id="f1-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <g font-family="IBM Plex Mono, monospace">
+            <!-- SEÑALES -->
+            <rect x="110" y="30" width="510" height="58" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="126" y="54" font-size="13" letter-spacing="1.6" fill="currentColor">SEÑALES</text>
+            <text x="126" y="73" font-size="11" class="m">cuatro números → nubes → palabras → glifos</text>
+
+            <text x="365" y="109" font-size="10.5" text-anchor="middle" class="m">alguien que decide cuándo emitir</text>
+            <line x1="180" y1="118" x2="180" y2="93" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+            <line x1="550" y1="118" x2="550" y2="93" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+
+            <!-- CEREBROS -->
+            <rect x="110" y="122" width="510" height="58" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="126" y="146" font-size="13" letter-spacing="1.6" fill="currentColor">CEREBROS</text>
+            <text x="126" y="165" font-size="11" class="m">sentidos → red pequeña → los cinco verbos</text>
+
+            <text x="365" y="201" font-size="10.5" text-anchor="middle" class="m">algo que puede comer y puede morir</text>
+            <line x1="180" y1="210" x2="180" y2="185" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+            <line x1="550" y1="210" x2="550" y2="185" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+
+            <!-- CUERPOS -->
+            <rect x="110" y="214" width="510" height="58" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="126" y="238" font-size="13" letter-spacing="1.6" fill="currentColor">CUERPOS</text>
+            <text x="126" y="257" font-size="11" class="m">genoma = cadena larga · energía · daño · cadáver</text>
+
+            <text x="365" y="293" font-size="10.5" text-anchor="middle" class="m">materia que se copia a sí misma</text>
+            <line x1="180" y1="302" x2="180" y2="277" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+            <line x1="550" y1="302" x2="550" y2="277" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+
+            <!-- QUÍMICA -->
+            <rect x="110" y="306" width="510" height="58" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="126" y="330" font-size="13" letter-spacing="1.6" fill="currentColor">QUÍMICA</text>
+            <text x="126" y="349" font-size="11" class="m">átomos → cadenas → reacciones · <tspan class="p">aquí vive el fuego</tspan></text>
+
+            <text x="365" y="385" font-size="10.5" text-anchor="middle" class="m">un sitio con calor y luz donde pasan cosas</text>
+            <line x1="180" y1="394" x2="180" y2="369" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+            <line x1="550" y1="394" x2="550" y2="369" stroke="currentColor" stroke-width="1.2" marker-end="url(#f1-punta)"/>
+
+            <!-- FÍSICA -->
+            <rect x="110" y="398" width="510" height="58" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="126" y="422" font-size="13" letter-spacing="1.6" fill="currentColor">FÍSICA</text>
+            <text x="126" y="441" font-size="11" class="m">rejilla 64×64 · temperatura · humedad · marca del suelo</text>
+
+            <!-- OBSERVACIÓN, al margen -->
+            <rect x="652" y="30" width="128" height="426" fill="none" class="st-m" stroke-width="1" stroke-dasharray="4 4"/>
+            <text transform="rotate(-90 716 243)" x="716" y="243" font-size="12" letter-spacing="1.6" text-anchor="middle" class="m">OBSERVACIÓN</text>
+            <text transform="rotate(-90 716 243)" x="716" y="261" font-size="10" text-anchor="middle" class="m">el microscopio, no el mundo</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Cada flecha dice qué le entrega una capa a la de encima. El fuego no es una capa ni una tecnología: es una reacción de la química que suelta mucho calor y enciende a la celda vecina, y por eso existe desde el primer tick. La observación está fuera del recuadro a propósito — mirar no cambia el mundo.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">3<br>El bicho</p>
+    <h2>Lo único que hay dentro de una cabeza</h2>
+    <p>Un bicho es esto y nada más: percibe treinta y dos números, los pasa por una red pequeña, y salen nueve números que son los cinco verbos. No hay una función que se llame cazar, ni huir, ni avisar. Si eso aparece, aparece <em class="senal">dentro</em> de la red, y yo no lo escribí.</p>
+
+    <figure>
+      <div class="lienzo">
+        <svg viewBox="0 0 800 470" role="img" aria-label="El bucle de una criatura: los sentidos entran al cerebro, el cerebro saca los cinco verbos, los verbos cambian el mundo, y del mundo vuelve energía menos dolor como única recompensa, más tres formas de aprender que modifican el cerebro.">
+          <defs>
+            <marker id="f2-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+            <marker id="f2-punta-senal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="s"/>
+            </marker>
+          </defs>
+
+          <g font-family="IBM Plex Mono, monospace">
+            <!-- Tres formas de aprender -->
+            <rect x="230" y="25" width="340" height="90" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/>
+            <text x="244" y="46" font-size="11" letter-spacing="1.4" fill="currentColor">TRES FORMAS DE APRENDER</text>
+            <text x="244" y="68" font-size="10" class="m">herencia — los pesos de los padres, con erratas</text>
+            <text x="244" y="85" font-size="10" class="m">en vida — refuerza lo que precedió a comer</text>
+            <text x="244" y="102" font-size="10" class="m">imitación — copia de quien acaba de acertar</text>
+            <line x1="400" y1="115" x2="400" y2="166" stroke="currentColor" stroke-width="1.2" marker-end="url(#f2-punta)"/>
+
+            <!-- SENTIDOS -->
+            <rect x="30" y="150" width="200" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="44" y="173" font-size="11.5" letter-spacing="1.4" fill="currentColor">SENTIDOS</text>
+            <text x="44" y="197" font-size="10" class="m">visión — unos pocos rayos</text>
+            <text x="44" y="215" font-size="10" class="m">olfato — hacia dónde huele más</text>
+            <text x="44" y="233" font-size="10" class="m">tacto — contacto y daño</text>
+            <text x="44" y="251" font-size="10" class="m">dentro — hambre, frío, dolor</text>
+            <text x="44" y="269" font-size="10" class="s">social — la última señal oída</text>
+            <text x="44" y="287" font-size="10" class="m">suelo — la marca de la celda</text>
+
+            <!-- CEREBRO -->
+            <rect x="320" y="170" width="160" height="80" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="400" y="205" font-size="12.5" letter-spacing="1.6" text-anchor="middle" fill="currentColor">CEREBRO</text>
+            <text x="400" y="224" font-size="9.5" text-anchor="middle" class="m">16 a 64 neuronas</text>
+
+            <line x1="234" y1="210" x2="314" y2="210" stroke="currentColor" stroke-width="1.2" marker-end="url(#f2-punta)"/>
+            <text x="274" y="201" font-size="9.5" text-anchor="middle" class="m">32 números</text>
+
+            <line x1="484" y1="210" x2="564" y2="210" stroke="currentColor" stroke-width="1.2" marker-end="url(#f2-punta)"/>
+            <text x="524" y="201" font-size="9.5" text-anchor="middle" class="m">9 números</text>
+
+            <!-- VERBOS -->
+            <rect x="570" y="150" width="200" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="584" y="173" font-size="11.5" letter-spacing="1.4" fill="currentColor">LOS CINCO VERBOS</text>
+            <text x="584" y="200" font-size="10" class="m">mover</text>
+            <text x="584" y="220" font-size="10" class="m">agarrar / soltar</text>
+            <text x="584" y="240" font-size="10" class="m">morder</text>
+            <text x="584" y="260" font-size="10" class="s">emitir señal (4 números)</text>
+            <text x="584" y="280" font-size="10" class="m">rascar el suelo</text>
+
+            <line x1="670" y1="304" x2="670" y2="341" stroke="currentColor" stroke-width="1.2" marker-end="url(#f2-punta)"/>
+            <text x="682" y="327" font-size="9.5" class="m">actúa</text>
+
+            <!-- EL MUNDO -->
+            <rect x="570" y="345" width="200" height="60" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="670" y="381" font-size="12.5" letter-spacing="1.6" text-anchor="middle" fill="currentColor">EL MUNDO</text>
+
+            <!-- recompensa -->
+            <path d="M 566 362 L 400 362 L 400 256" fill="none" class="st-s" stroke-width="1.6" marker-end="url(#f2-punta-senal)"/>
+            <text x="412" y="354" font-size="10" class="s">energía − dolor</text>
+
+            <!-- vuelta a los sentidos -->
+            <path d="M 566 400 L 90 400 L 90 306" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#f2-punta)"/>
+            <text x="102" y="392" font-size="9.5" class="m">lo que pasa después</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>La flecha turquesa es la única recompensa que existe en todo el sistema: energía menos dolor. No hay recompensa por reproducirse, ni por agruparse, ni por emitir. Si algún día emitir sale a cuenta, será porque los que lo hicieron comieron más o murieron menos, no porque yo se lo pagara.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">4<br>El motor</p>
+    <h2>Por qué habrían de hablar</h2>
+    <p>Esta es la parte que decide si el experimento tiene sentido siquiera. Un bicho que se las arregla solo no tiene ningún motivo para abrir la boca, y el canal se queda mudo para siempre. Así que el mundo se ajusta para que <strong>estar solo y a ciegas sea mucho peor que estar acompañado e informado</strong>.</p>
+
+    <figure>
+      <div class="lienzo">
+        <svg viewBox="0 0 800 312" role="img" aria-label="Tres reglas físicas — comida enterrada, peligro que llega de fuera de la vista, y presa que uno solo no derriba — convergen en que sobrevivir solo es mucho peor, y de ahí en que el que vio primero pueda avisar.">
+          <defs>
+            <marker id="f3-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <g font-family="IBM Plex Mono, monospace">
+            <rect x="20" y="20" width="230" height="70" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="34" y="46" font-size="11.5" letter-spacing="1.2" fill="currentColor">COMIDA ENTERRADA</text>
+            <text x="34" y="66" font-size="10" class="m">solo se huele estando encima</text>
+            <text x="34" y="81" font-size="10" class="m">y es la comida principal</text>
+
+            <rect x="20" y="115" width="230" height="70" fill="none" class="st-p" stroke-width="1.4"/>
+            <text x="34" y="141" font-size="11.5" letter-spacing="1.2" class="p">PELIGRO</text>
+            <text x="34" y="161" font-size="10" class="m">llega desde fuera de la vista</text>
+            <text x="34" y="176" font-size="10" class="m">de casi todos, y mata</text>
+
+            <rect x="20" y="210" width="230" height="70" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="34" y="236" font-size="11.5" letter-spacing="1.2" fill="currentColor">PRESA GRANDE</text>
+            <text x="34" y="256" font-size="10" class="m">aguanta más mordiscos</text>
+            <text x="34" y="271" font-size="10" class="m">de los que uno solo da</text>
+
+            <line x1="254" y1="55" x2="306" y2="140" stroke="currentColor" stroke-width="1.2" marker-end="url(#f3-punta)"/>
+            <line x1="254" y1="150" x2="306" y2="150" stroke="currentColor" stroke-width="1.2" marker-end="url(#f3-punta)"/>
+            <line x1="254" y1="245" x2="306" y2="160" stroke="currentColor" stroke-width="1.2" marker-end="url(#f3-punta)"/>
+
+            <rect x="310" y="112" width="220" height="76" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="420" y="140" font-size="11.5" letter-spacing="1.2" text-anchor="middle" fill="currentColor">SOBREVIVIR SOLO</text>
+            <text x="420" y="158" font-size="11.5" letter-spacing="1.2" text-anchor="middle" fill="currentColor">ES MUCHO PEOR</text>
+            <text x="420" y="176" font-size="10" text-anchor="middle" class="m">que sobrevivir acompañado</text>
+
+            <line x1="534" y1="150" x2="586" y2="150" stroke="currentColor" stroke-width="1.2" marker-end="url(#f3-punta)"/>
+
+            <rect x="590" y="112" width="190" height="76" fill="none" class="st-s" stroke-width="1.6"/>
+            <text x="685" y="140" font-size="11.5" letter-spacing="1.2" text-anchor="middle" class="s">EL QUE VIO PRIMERO</text>
+            <text x="685" y="158" font-size="11.5" letter-spacing="1.2" text-anchor="middle" class="s">PUEDE AVISAR</text>
+            <text x="685" y="176" font-size="10" text-anchor="middle" class="m">el canal tiene algo que llevar</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Ninguna de las tres reglas de la izquierda menciona hablar. Son reglas sobre comida y sobre muerte. Que de ahí salga un idioma es precisamente lo que hay que comprobar, y puede no salir.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">5<br>La medida</p>
+    <h2>Cómo se sabe que un ruido es una palabra</h2>
+    <p>Una palabra, aquí, es un ruido que <strong>me dice algo que no sabía</strong>. Así que la medida es: si oigo la señal, ¿acierto más sobre lo que está pasando que si no la oigo? Eso se mide en bits. Cero bits significa que la señal no dice nada. Un bit significa que distingue perfectamente dos situaciones.</p>
+    <p>Y aquí está la trampa que hunde a la mayoría de los experimentos de este tipo: <strong>con pocos datos, esa medida sale mayor que cero por puro azar</strong>. Si me limito a comprobar que es mayor que cero, voy a «encontrar» un idioma en cualquier montón de ruido.</p>
+
+    <figure>
+      <div class="lienzo">
+        <svg viewBox="0 0 800 250" role="img" aria-label="La medición real solo cuenta si supera el percentil 99 de mil mediciones hechas sobre señales barajadas al azar.">
+          <defs>
+            <marker id="f5-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <g font-family="IBM Plex Mono, monospace">
+            <path d="M 80 195 C 130 195 130 100 175 100 C 220 100 220 195 270 195 Z" class="campana" stroke-width="1.2"/>
+            <text x="175" y="78" font-size="10.5" text-anchor="middle" class="m">lo que da el puro azar</text>
+            <text x="175" y="63" font-size="10.5" text-anchor="middle" class="m">(las mismas señales, barajadas 1.000 veces)</text>
+
+            <line x1="300" y1="195" x2="300" y2="70" class="st-m" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <text x="308" y="66" font-size="10.5" class="m">percentil 99 del azar</text>
+
+            <line x1="520" y1="195" x2="520" y2="128" class="st-s" stroke-width="1.6"/>
+            <circle cx="520" cy="195" r="6" class="s"/>
+            <text x="520" y="118" font-size="11.5" text-anchor="middle" class="s">la medición real</text>
+            <text x="520" y="102" font-size="10" text-anchor="middle" class="m">solo cuenta si cae a la derecha de la línea</text>
+
+            <line x1="60" y1="195" x2="750" y2="195" stroke="currentColor" stroke-width="1.4" marker-end="url(#f5-punta)"/>
+            <text x="60" y="222" font-size="10" class="m">0 bits</text>
+            <text x="405" y="240" font-size="10.5" text-anchor="middle" class="m">cuánto me dice la señal sobre lo que está pasando</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>El control estadístico: se cogen las mismas señales y los mismos contextos, se emparejan al azar mil veces, y se mide cuánto sale de ahí. Eso es lo que da el ruido. La medición de verdad solo se considera un hallazgo si supera el 99 % de esas. Sin este paso, cualquier montón de ruido parece un idioma.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">6<br>Los controles</p>
+    <h2>Las cinco condiciones</h2>
+    <p>Cinco mundos con <strong>la misma semilla, la misma física y los mismos ticks</strong>. Lo único que cambia es lo que dice cada recuadro. Sin esto, si veo señales bonitas, no tengo forma de saber si sirven para algo.</p>
+
+    <figure>
+      <div class="lienzo">
+        <svg viewBox="0 0 800 530" role="img" aria-label="Cinco condiciones experimentales: mundo normal, mundo mudo con el canal cortado, canal barajado, mundo transparente sin información asimétrica, y cerebros al azar.">
+          <defs>
+            <marker id="f4-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+            <marker id="f4-punta-rojo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="p"/>
+            </marker>
+            <marker id="f4-punta-senal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="s"/>
+            </marker>
+          </defs>
+
+          <g font-family="IBM Plex Mono, monospace">
+
+            <!-- A · NORMAL -->
+            <text x="15" y="30" font-size="11.5" letter-spacing="1.3" fill="currentColor">A · MUNDO NORMAL</text>
+            <rect x="15" y="40" width="240" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="55" cy="80" r="15" class="p"/>
+            <text x="55" y="85" font-size="13" text-anchor="middle" class="inv">!</text>
+            <text x="55" y="112" font-size="9" text-anchor="middle" class="m">peligro</text>
+            <line x1="66" y1="93" x2="93" y2="126" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#f4-punta)"/>
+            <circle cx="110" cy="148" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="110" y="153" font-size="12" text-anchor="middle" fill="currentColor">A</text>
+            <circle cx="200" cy="148" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="200" y="153" font-size="12" text-anchor="middle" fill="currentColor">B</text>
+            <line x1="134" y1="148" x2="175" y2="148" class="st-s" stroke-width="1.6" marker-end="url(#f4-punta-senal)"/>
+            <text x="154" y="139" font-size="9" text-anchor="middle" class="s">señal</text>
+            <text x="15" y="212" font-size="10" class="m">Todo conectado. Es la condición</text>
+            <text x="15" y="227" font-size="10" class="m">que se pone a prueba.</text>
+
+            <!-- B · MUDO -->
+            <text x="280" y="30" font-size="11.5" letter-spacing="1.3" fill="currentColor">B · MUNDO MUDO</text>
+            <rect x="280" y="40" width="240" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="320" cy="80" r="15" class="p"/>
+            <text x="320" y="85" font-size="13" text-anchor="middle" class="inv">!</text>
+            <text x="320" y="112" font-size="9" text-anchor="middle" class="m">peligro</text>
+            <line x1="331" y1="93" x2="358" y2="126" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#f4-punta)"/>
+            <circle cx="375" cy="148" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="375" y="153" font-size="12" text-anchor="middle" fill="currentColor">A</text>
+            <circle cx="465" cy="148" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="465" y="153" font-size="12" text-anchor="middle" fill="currentColor">B</text>
+            <line x1="399" y1="148" x2="440" y2="148" class="st-m" stroke-width="1.2" stroke-dasharray="3 3"/>
+            <line x1="412" y1="139" x2="428" y2="157" class="st-p" stroke-width="2.4"/>
+            <line x1="428" y1="139" x2="412" y2="157" class="st-p" stroke-width="2.4"/>
+            <text x="280" y="212" font-size="10" class="m">Emiten, nadie oye. Si A vive</text>
+            <text x="280" y="227" font-size="10" class="m">como B, la señal es decoración.</text>
+
+            <!-- C · BARAJADO -->
+            <text x="545" y="30" font-size="11.5" letter-spacing="1.3" fill="currentColor">C · CANAL BARAJADO</text>
+            <rect x="545" y="40" width="240" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="585" cy="80" r="15" class="p"/>
+            <text x="585" y="85" font-size="13" text-anchor="middle" class="inv">!</text>
+            <text x="585" y="112" font-size="9" text-anchor="middle" class="m">peligro</text>
+            <line x1="596" y1="93" x2="623" y2="126" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#f4-punta)"/>
+            <circle cx="640" cy="148" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="640" y="153" font-size="12" text-anchor="middle" fill="currentColor">A</text>
+            <circle cx="730" cy="148" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="730" y="153" font-size="12" text-anchor="middle" fill="currentColor">B</text>
+            <line x1="664" y1="148" x2="705" y2="148" class="st-p" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f4-punta-rojo)"/>
+            <text x="684" y="139" font-size="9" text-anchor="middle" class="p">de otro</text>
+            <text x="545" y="212" font-size="10" class="m">Oyen, pero la señal equivocada.</text>
+            <text x="545" y="227" font-size="10" class="m">Separa oír algo de oír lo correcto.</text>
+
+            <!-- D · TRANSPARENTE -->
+            <text x="15" y="300" font-size="11.5" letter-spacing="1.3" fill="currentColor">D · MUNDO TRANSPARENTE</text>
+            <rect x="15" y="310" width="240" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="55" cy="350" r="15" class="p"/>
+            <text x="55" y="355" font-size="13" text-anchor="middle" class="inv">!</text>
+            <text x="55" y="382" font-size="9" text-anchor="middle" class="m">peligro</text>
+            <line x1="66" y1="363" x2="93" y2="396" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#f4-punta)"/>
+            <path d="M 69 342 Q 150 330 195 396" fill="none" class="st-p" stroke-width="1.4" stroke-dasharray="3 3" marker-end="url(#f4-punta-rojo)"/>
+            <text x="152" y="329" font-size="9" text-anchor="middle" class="p">los dos lo ven</text>
+            <circle cx="110" cy="418" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="110" y="423" font-size="12" text-anchor="middle" fill="currentColor">A</text>
+            <circle cx="200" cy="418" r="21" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="200" y="423" font-size="12" text-anchor="middle" fill="currentColor">B</text>
+            <line x1="134" y1="418" x2="175" y2="418" class="st-m" stroke-width="1.2"/>
+            <text x="15" y="482" font-size="10" class="m">Sin asimetría. Predicción: aquí</text>
+            <text x="15" y="497" font-size="10" class="m">el canal se queda mudo.</text>
+
+            <!-- E · AZAR -->
+            <text x="280" y="300" font-size="11.5" letter-spacing="1.3" fill="currentColor">E · CEREBROS AL AZAR</text>
+            <rect x="280" y="310" width="240" height="150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="320" cy="350" r="15" class="p"/>
+            <text x="320" y="355" font-size="13" text-anchor="middle" class="inv">!</text>
+            <text x="320" y="382" font-size="9" text-anchor="middle" class="m">peligro</text>
+            <line x1="331" y1="363" x2="358" y2="396" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3" marker-end="url(#f4-punta)"/>
+            <circle cx="375" cy="418" r="21" class="azar" stroke-width="1.4" stroke-dasharray="3 3"/>
+            <text x="375" y="422" font-size="9" text-anchor="middle" class="m">azar</text>
+            <circle cx="465" cy="418" r="21" class="azar" stroke-width="1.4" stroke-dasharray="3 3"/>
+            <text x="465" y="422" font-size="9" text-anchor="middle" class="m">azar</text>
+            <line x1="399" y1="418" x2="440" y2="418" class="st-m" stroke-width="1.2" stroke-dasharray="2 3"/>
+            <text x="280" y="482" font-size="10" class="m">Los verbos salen de un dado.</text>
+            <text x="280" y="497" font-size="10" class="m">Línea base: ¿aprender sirvió?</text>
+
+            <!-- Cómo se lee -->
+            <rect x="545" y="310" width="240" height="150" fill="none" class="st-s" stroke-width="1.2"/>
+            <text x="561" y="336" font-size="11" letter-spacing="1.3" class="s">CÓMO SE LEE</text>
+            <text x="561" y="364" font-size="10" class="m">A ≈ B</text>
+            <text x="561" y="379" font-size="10" fill="currentColor">el idioma es decoración</text>
+            <text x="561" y="404" font-size="10" class="m">C ≈ A</text>
+            <text x="561" y="419" font-size="10" fill="currentColor">el contenido no importa</text>
+            <text x="561" y="444" font-size="10" class="m">D con idioma</text>
+            <text x="561" y="459" font-size="10" fill="currentColor">mi explicación es falsa</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>El control C es el más importante y el que casi nadie hace: comprobar que lo que importa no es oír, sino oír <em>lo correcto</em>. Si un bicho sobrevive igual escuchando señales barajadas, entonces no hay significado, solo hay ruido de compañía.</figcaption>
+    </figure>
+
+    <h3>Lo que predigo antes de correrlo</h3>
+    <p>Escrito ahora, cuando todavía no sé nada. Si los resultados no se parecen a esta tabla, la que está mal es la tabla, y se dice.</p>
+
+    <div class="tabla-envoltura">
+      <table>
+        <thead>
+          <tr><th>Condición</th><th>Esperanza de vida</th><th>La señal dice algo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>A · normal</td><td>alta, y sube con las generaciones</td><td>sí, y crece</td></tr>
+          <tr><td>B · mudo</td><td>baja</td><td>no hay canal</td></tr>
+          <tr><td>C · barajado</td><td>como B</td><td>no</td></tr>
+          <tr><td>D · transparente</td><td>alta</td><td>no</td></tr>
+          <tr><td>E · azar</td><td>muy baja</td><td>no</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">7<br>Las reglas</p>
+    <h2>Qué puedo tocar y qué no</h2>
+    <p>Un experimento donde el que lo hace puede cambiar cualquier cosa hasta que salga bonito no es un experimento. Estas dos listas son la diferencia.</p>
+
+    <div class="par full">
+      <div class="panel">
+        <h4>Puedo tocarlo</h4>
+        <ul>
+          <li>Lo letal que es el peligro</li>
+          <li>Lo rica que es la comida enterrada</li>
+          <li>Cuánto aguanta la presa grande</li>
+          <li>Cuántos bichos caben en el mundo</li>
+          <li>Lo que cuesta hacer ruido</li>
+          <li>Hasta dónde llega una señal</li>
+          <li>Cuánto se copian unos a otros</li>
+        </ul>
+      </div>
+      <div class="panel prohibido">
+        <h4>Tocarlo sería hacer trampa</h4>
+        <ul>
+          <li>Añadir un sexto verbo</li>
+          <li>Premiar el acto de emitir</li>
+          <li>Escribir una lista de palabras, de especies o de moléculas</li>
+          <li>Hacer que algo aparezca porque hacía falta</li>
+          <li>Meter una excepción para que algo por fin funcione</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>La lista de la derecha no está ahí por purismo. Está ahí porque en cuanto toque una sola de esas cosas, el resultado deja de significar nada: ya no habría descubierto que un idioma puede aparecer solo, habría descubierto que sé escribir uno.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">8<br>El fracaso</p>
+    <h2>Cuándo digo que no salió</h2>
+    <p>Esto también se escribe antes, porque después es demasiado fácil correr una semilla más «a ver si esta vez».</p>
+    <p><strong>Resultado nulo</strong> si, tras medio millón de ticks en diez semillas distintas, en ninguna la medición supera al azar barajado. Entonces se dice que no salió, se publica igual, y se toca <em class="senal">solo</em> lo de la lista de la izquierda, en este orden: primero lo letal que es el peligro, luego lo rica que es la comida enterrada, luego la densidad de población, y por último lo que cuesta emitir.</p>
+    <p><strong>Falso positivo</strong> —el fallo que más me preocupa— si aparecen nubes de señal muy bonitas pero A vive igual que B. Eso quiere decir que emiten por costumbre y no sirve de nada. No es un idioma: es un tic.</p>
+    <p>Cada corrida se anota con su semilla, sus parámetros y su resultado. También las que fracasan. Sobre todo las que fracasan: son las que dicen qué mover.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">9<br>El orden</p>
+    <h2>Por dónde va esto</h2>
+
+    <div class="tabla-envoltura">
+      <table>
+        <thead>
+          <tr><th>Fase</th><th>Qué se construye</th><th>Cuándo está terminada</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0 · hecha</td><td>Esqueleto, laboratorio, los tres tests</td><td>100.000 ticks, masa exacta, tests en verde</td></tr>
+          <tr><td>1</td><td>Terreno, clima, estaciones, plantas</td><td>El mundo cambia con las estaciones y no se congela</td></tr>
+          <tr><td>2</td><td>Química, energía, difusión, fuego</td><td>Aparece un ciclo que se copia solo, sin ponerlo</td></tr>
+          <tr><td>3</td><td>Cuerpos, genoma, crías, especies</td><td>Hay linajes que duran y linajes que se extinguen</td></tr>
+          <tr><td>4</td><td>Cerebros, aprender, imitar, la presión</td><td>Viven más que los cerebros al azar</td></tr>
+          <tr><td>5</td><td>Palabras, glifos, léxico, crónica</td><td>Puedo entender qué cree un bicho y en qué se equivoca</td></tr>
+          <tr><td>6</td><td>Guardado, tiempo, intervenir, publicar</td><td>Cierro un día, abro, y el mundo avanzó de verdad</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Las fases 4 y 5 son el experimento. Las tres primeras son montar el aparato, y la última es poder enseñárselo a alguien.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <p class="eyebrow">Nota</p>
+    <h2>Lo que este experimento no es</h2>
+    <p>No es una simulación de un idioma. Es la pregunta de si aparece uno. No hay objetivo, no hay puntuación, no hay una especie que sea tuya, y no se puede ganar. Puedes meter mano —llover, quemar, mover cosas— pero entra al mundo como algo que ellos sienten, no como magia, y queda anotado.</p>
+    <p>Y si de tanto meter mano acaban con un ruido que quiere decir <em>tú</em>, ese ruido salió solo.</p>
+  </section>
+
+  <footer>
+    Protocolo v1 · escrito antes de correr el experimento<br>
+    Las reglas del proyecto viven en CLAUDE.md · el plan en docs/PLAN.md · lo que puede salir mal, en docs/RIESGOS.md
+  </footer>
+
+</main>
