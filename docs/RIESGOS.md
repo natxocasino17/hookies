@@ -124,6 +124,12 @@ criaturas son 13,4 M, entre 27 y 67 ms: **por sí solos ya se pasan del
 presupuesto**. Con 500 criaturas quedan en 7–17 ms, justo en el límite, y sin
 dejar nada para la química.
 
+**Medido en la fase 0** (laboratorio, 100.000 ticks, tres semillas): el tick de
+la fase 0 —solo difusión de materia sobre 64×64— cuesta **0,037 ms**, o sea
+unos 27.000 ticks por segundo. Es el suelo del presupuesto, con el mundo aún
+vacío: sirve como referencia para medir cuánto se come cada capa que se agregue
+encima, no como prueba de que la química vaya a entrar.
+
 **Qué propongo.** Empezar en **64×64 (4.096 celdas) y ~500 criaturas**, no en
 128×128. No es solo por rendimiento: cumple mejor el objetivo declarado en §1.1
 —mundo chico, población densa, encuentros constantes—. Con 500 bichos en

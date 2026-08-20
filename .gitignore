@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.local
+
+# Salidas del laboratorio: se regeneran corriendo la semilla de nuevo, que para
+# eso el mundo es determinista.
+*.csv
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json

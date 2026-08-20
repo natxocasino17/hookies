@@ -10,7 +10,16 @@ en el archivo de constantes y se ajustan con el laboratorio.
 
 ---
 
-## Fase 0 — Esqueleto
+## Fase 0 — Esqueleto ✅ TERMINADA
+
+**Resultado**: los 45 tests pasan; el laboratorio corre 100.000 ticks por
+semilla a 0,037 ms por tick (unos 27.000 ticks/s) con la masa conservada exacta
+y sin avisos. Se comprobó rompiendo el código a propósito que el test de
+ausencia de guion salta al agregar un sexto verbo. Decisiones tomadas durante la
+fase: la materia se cuenta en enteros (D7), y las funciones trascendentes se
+implementan a mano porque `Math.exp` y compañía no dan el mismo bit en todos los
+navegadores.
+
 
 **Se construye**
 
