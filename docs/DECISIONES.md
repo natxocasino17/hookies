@@ -417,3 +417,68 @@ sin verlo.
 detector encuentre de verdad en los datos. Nada de frases escritas a mano para
 que quede bonito. La crónica y los nueve detectores son la misma máquina — el
 diario es la voz de los detectores.
+
+---
+
+## D18 — El viento, y por qué no es un adorno
+
+**Se elige**: viento con dirección. La presión sale de que el aire caliente pesa
+menos y de que arriba hay menos aire encima; el viento va de la presión alta a
+la baja y se desvía porque el planeta gira (Coriolis). Ese viento **arrastra** el
+calor y la humedad en vez de solo difundirlos.
+
+**El problema que resolvía**: sin viento, el calor y la humedad se repartían por
+igual en todas las direcciones. Eso mezcla pero no fluye. Medido: **llovía en el
+85 % del planeta a la vez**, en cada tick, para siempre. Eso no es tiempo
+meteorológico, es una llovizna de equilibrio; no hay frentes, ni tormentas que
+viajen, ni días secos.
+
+**Medido después**: la lluvia baja al 31-52 % de las celdas y aparecen zonas
+secas y zonas húmedas. El agua en el suelo se triplica y la red de ríos pasa de
+unas decenas a unos cientos de cauces.
+
+**Lo que emergió sin escribirlo**: **sombra de lluvia**. El aire sube la montaña,
+se enfría, descarga a barlovento, y al otro lado baja seco. Medido: 260 gotas de
+agua en el suelo a barlovento contra 136 a sotavento. Nadie escribió "desierto"
+en ninguna parte — queda detrás. Hay un test que lo comprueba.
+
+**Y la razón de fondo, que no es el paisaje**: el viento lleva el olor. El
+olfato es uno de los sentidos de las criaturas, así que un bicho que huele algo
+que viene de barlovento **sabe algo que el de al lado no sabe**. Eso es
+información asimétrica, que es el motor de todo lo que se quiere que llegue a
+pasar. El viento no se metió para que el mundo fuera bonito.
+
+**Un error propio, apuntado**: al principio proyectaba el viento contra el suelo
+*antes* de aplicar Coriolis, y la desviación volvía a sacarlo fuera de la
+esfera. La proyección va al final.
+
+---
+
+## D19 — Los hongos no son un sistema aparte
+
+**Se elige**: no habrá código de hongos. Un hongo es lo que llamaremos a un ser
+que no se mueve y come materia muerta, igual que una planta es un ser que no se
+mueve y come luz. Los dos salen del mismo espacio de genomas.
+
+**Por qué importa que existan**: sin descomponedores, la materia se queda
+atrapada en los cadáveres y en la madera muerta para siempre, y el mundo se
+apaga. Los hongos son **lo que cierra el ciclo de la materia**. No son un adorno
+del bosque: son la razón de que haya bosque otra vez.
+
+**Cómo aparecen sin escribirlos**: la descomposición es química actuando sobre
+materia muerta compleja. Un ciclo autocatalítico que se alimenta de cadáveres
+*es* un descomponedor, y eso ya está previsto en la fase 2 — un microbio es un
+ciclo detectado en la red de reacciones, no una entidad.
+
+**La consecuencia incómoda, y hay que decirla**: si las plantas y los hongos son
+seres con genes distintos, entonces **no pueden ser un sistema separado del de
+las criaturas**. Tener "plantas" por un lado y "bichos" por otro sería partir el
+árbol de la vida a mano, que es exactamente la clase de lista predefinida que el
+proyecto prohíbe: nadie podría evolucionar de una rama a la otra.
+
+**Qué implica**: lo caro de una criatura es el cerebro. Un ser sin cerebro y sin
+movimiento cuesta casi nada, así que caben miles. La vegetación de la fase 1 es
+**andamio provisional** y queda dicho: cuando lleguen los cuerpos de verdad en la
+fase 3, plantas y hongos tienen que pasar a ser cuerpos con genes de no moverse.
+Si al final no se hace, hay que decirlo y asumir que el árbol de la vida vino
+partido de fábrica.

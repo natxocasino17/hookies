@@ -283,6 +283,40 @@ export const GRADIENTE_ALTURA = 45;
 export const DIFUSION_TEMPERATURA_DIVISOR = 900;
 
 // ---------------------------------------------------------------------------
+// El viento
+//
+// Hasta ahora el calor y la humedad se repartían entre vecinas por igual en
+// todas direcciones. Eso mezcla, pero no es viento: no fluye hacia ningún lado.
+// Y sin flujo no hay tiempo meteorológico — medido, llovía en el 85 % del
+// planeta a la vez, o sea llovizna de equilibrio en todas partes.
+//
+// El viento sale de dos cosas, ninguna inventada: el aire caliente pesa menos,
+// así que va del sitio frío al caliente; y el planeta gira, así que lo que se
+// mueve se desvía. De ahí salen los vientos dominantes y los remolinos.
+// ---------------------------------------------------------------------------
+
+/** Cuánto baja la presión por cada grado de más. El aire caliente pesa menos. */
+export const PRESION_POR_GRADO = 1;
+
+/** Cuánto baja la presión por altura. Arriba hay menos aire encima. */
+export const PRESION_POR_ALTURA = 26;
+
+/**
+ * Cuánto desvía la rotación del planeta al aire que se mueve (Coriolis).
+ *
+ * Cero en el ecuador y máximo en los polos, y con el signo cambiado en cada
+ * hemisferio. Es lo que impide que el viento vaya en línea recta del frío al
+ * calor y lo que hace que las borrascas giren.
+ */
+export const DESVIO_POR_ROTACION = 1.7;
+
+/** Qué parte de la humedad de una celda se lleva el viento en cada tick. */
+export const ARRASTRE_DE_HUMEDAD = 0.34;
+
+/** Qué parte de la diferencia de temperatura arrastra el viento en cada tick. */
+export const ARRASTRE_DE_CALOR = 0.02;
+
+// ---------------------------------------------------------------------------
 // El ciclo del agua
 //
 // El agua es materia y se cuenta en enteros, como todo lo demás (D7): lo que se

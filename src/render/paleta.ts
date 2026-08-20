@@ -35,8 +35,15 @@ const FOSA: [number, number, number] = [0.04, 0.10, 0.23];
 
 /** Con cuánta agua en el suelo una celda está todo lo verde que puede estar. */
 const AGUA_PARA_VERDE_PLENO = 220;
-/** Caudal a partir del cual una celda se lee como río. */
-const CAUDAL_DE_RIO = 15;
+/**
+ * Caudal a partir del cual una celda se lee como río.
+ *
+ * Medido tras meter el viento: el caudal máximo del planeta ronda 66, y con 45
+ * queda un 5 % de la tierra marcada como río — una red de cauces. Con 15, que
+ * era el valor de antes del viento, salían 692 celdas de 1.022 y el continente
+ * entero se veía azul.
+ */
+export const CAUDAL_DE_RIO = 45;
 /** Altura desde la que la roca asoma por encima de la vegetación. */
 const ALTURA_DE_ROCA = 0.42;
 
@@ -71,8 +78,8 @@ export function colorDeCelda(
 
   // Los ríos: donde pasa mucha agua camino del mar. Nadie los dibujó.
   if (flujoAgua > CAUDAL_DE_RIO) {
-    const fuerza = flujoAgua / (CAUDAL_DE_RIO * 6);
-    mezclar(destino as never, RIO, fuerza > 0.8 ? 0.8 : fuerza, destino);
+    const fuerza = (flujoAgua - CAUDAL_DE_RIO) / 22;
+    mezclar(destino as never, RIO, fuerza > 0.85 ? 0.85 : fuerza, destino);
   }
 
   // Nieve: bajo cero, se ve. Por eso las cumbres y los polos son blancos.

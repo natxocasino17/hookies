@@ -182,3 +182,68 @@ describe('el clima', () => {
     expect(helado).toBeLessThan(0.6);
   });
 });
+
+describe('el viento', () => {
+  it('sopla pegado al suelo, sin salirse de la esfera', () => {
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < 2000; i++) avanzarUnTick(estado, geo);
+
+    for (let i = 0; i < estado.nCeldas; i++) {
+      const haciaFuera =
+        estado.viento[i * 3]! * geo.centro[i * 3]! +
+        estado.viento[i * 3 + 1]! * geo.centro[i * 3 + 1]! +
+        estado.viento[i * 3 + 2]! * geo.centro[i * 3 + 2]!;
+      expect(Math.abs(haciaFuera), `celda ${i}`).toBeLessThan(1e-4);
+    }
+  });
+
+  it('deja sombra de lluvia detrás de las montañas', () => {
+    // Nadie escribe "desierto" en ninguna parte. El aire sube la montaña, se
+    // enfría, descarga de un lado, y al otro lado baja seco. Es la consecuencia
+    // de que el viento tenga dirección: sin él, la humedad se repartía por igual
+    // en todas direcciones y no había sotavento ni barlovento.
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < TICKS_POR_ANO; i++) avanzarUnTick(estado, geo);
+
+    const cumbres = [...Array(estado.nCeldas).keys()].filter((i) => estado.altura[i]! > 0.35);
+    let barlovento = 0;
+    let sotavento = 0;
+    let nBarlovento = 0;
+    let nSotavento = 0;
+
+    for (const i of cumbres) {
+      for (let k = 0; k < geo.nVecinos[i]!; k++) {
+        const j = geo.vecinos[i * MAX_VECINOS + k]!;
+        if (estado.altura[j]! >= estado.altura[i]!) continue;
+        const proyeccion =
+          (geo.centro[j * 3]! - geo.centro[i * 3]!) * estado.viento[i * 3]! +
+          (geo.centro[j * 3 + 1]! - geo.centro[i * 3 + 1]!) * estado.viento[i * 3 + 1]! +
+          (geo.centro[j * 3 + 2]! - geo.centro[i * 3 + 2]!) * estado.viento[i * 3 + 2]!;
+        if (proyeccion > 0) {
+          sotavento += estado.aguaSuelo[j]!;
+          nSotavento++;
+        } else {
+          barlovento += estado.aguaSuelo[j]!;
+          nBarlovento++;
+        }
+      }
+    }
+
+    expect(nBarlovento).toBeGreaterThan(10);
+    expect(nSotavento).toBeGreaterThan(10);
+    expect(barlovento / nBarlovento).toBeGreaterThan((sotavento / nSotavento) * 1.3);
+  });
+
+  it('no llueve en todo el planeta a la vez', () => {
+    // Antes del viento llovía en el 85 % de las celdas en cada tick: llovizna de
+    // equilibrio, no tiempo meteorológico. Con viento hay sitios secos.
+    const estado = crearEstado(7);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < TICKS_POR_ANO; i++) avanzarUnTick(estado, geo);
+    const llueve = [...Array(estado.nCeldas).keys()].filter((i) => estado.lluvia[i]! > 0).length;
+    expect(llueve / estado.nCeldas).toBeLessThan(0.7);
+    expect(llueve).toBeGreaterThan(0);
+  });
+});

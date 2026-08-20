@@ -45,6 +45,7 @@ import {
 import type { EstadoMundo } from './estado.js';
 import type { Geometria } from './geodesica.js';
 import { cosenoDeVuelta, dRaiz, senoDeVuelta } from './math.js';
+import { arrastrarCalor, arrastrarHumedad, calcularViento } from './viento.js';
 
 /**
  * Hacia dónde está el sol, visto desde el planeta.
@@ -274,7 +275,13 @@ function moverElAgua(estado: EstadoMundo, geo: Geometria, alReves: boolean): voi
 /** Un tick de clima. */
 export function avanzarElClima(estado: EstadoMundo, geo: Geometria, alReves: boolean): void {
   moverElCalor(estado, geo, alReves);
+  // El viento se calcula con las temperaturas de ahora y luego arrastra el calor
+  // y la humedad. Ese arrastre es lo que hace que haya frentes en vez de una
+  // mezcla uniforme: el aire llega de un sitio concreto, no de todos a la vez.
+  calcularViento(estado, geo);
+  arrastrarCalor(estado, geo);
   moverElAgua(estado, geo, alReves);
+  arrastrarHumedad(estado, geo);
 }
 
 /** Agua total del planeta, en gotas enteras. El test exige que no cambie jamás. */

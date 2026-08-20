@@ -80,6 +80,13 @@ export interface EstadoMundo {
   flujoAgua: Int32Array;
 
   /**
+   * Viento en cada celda: un vector de tres números tangente a la superficie.
+   * Se recalcula entero en cada tick a partir de la presión, así que no se
+   * guarda en el archivo; vive aquí solo para no pedir memoria en cada vuelta.
+   */
+  viento: Float32Array;
+
+  /**
    * Agua que cayó del cielo sobre esta celda en el último tick.
    * Tampoco gobierna nada: es de donde salen las nubes que se dibujan. Si ves
    * una nube es porque ahí está lloviendo, no porque quede bonito.
@@ -130,6 +137,7 @@ export function crearEstado(
     humedadAire: new Int32Array(geo.nCeldas),
     flujoAgua: new Int32Array(geo.nCeldas),
     lluvia: new Int32Array(geo.nCeldas),
+    viento: new Float32Array(geo.nCeldas * 3),
     energiaEntrada: 0,
     energiaSalida: 0,
   };
@@ -245,6 +253,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     humedadAire,
     flujoAgua: new Int32Array(n),
     lluvia: new Int32Array(n),
+    viento: new Float32Array(n * 3),
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),
   };

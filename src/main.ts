@@ -14,6 +14,7 @@ import {
   TICKS_POR_DIA,
 } from './sim/constants.js';
 import { VistaPlaneta } from './render/planeta.js';
+import { CAUDAL_DE_RIO } from './render/paleta.js';
 import type { NoticiaDelWorker, OrdenAlWorker, Velocidad } from './shared/protocolo.js';
 
 const worker = new Worker(new URL('./worker/sim.worker.ts', import.meta.url), { type: 'module' });
@@ -55,7 +56,7 @@ worker.onmessage = (evento: MessageEvent<NoticiaDelWorker>) => {
       for (let i = 0; i < noticia.nCeldas; i++) {
         if (noticia.altura[i]! >= NIVEL_DEL_MAR) tierra++;
         if (noticia.temperatura[i]! < 0) helado++;
-        if (noticia.flujoAgua[i]! > 15) rios++;
+        if (noticia.flujoAgua[i]! > CAUDAL_DE_RIO) rios++;
         sumaTemp += noticia.temperatura[i]!;
       }
 
