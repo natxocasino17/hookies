@@ -329,3 +329,91 @@ linaje puede aprender "cuando me duele, como lo azul", que lo azul no haga
 absolutamente nada, y pasárselo a otros por imitación. Eso es una superstición
 médica y se propaga como una cultura. **El detector mide las dos cosas: las
 medicinas que funcionan y las que no.**
+
+---
+
+## D14 — Sed sí, aseo solo si se les ocurre
+
+**Se elige**: el agua es una necesidad física con su propia sensación, igual que
+el hambre. Un cuerpo pierde agua por respirar y por calor, la química la
+necesita, y beber es morder algo mojado.
+
+**Lo que NO se hace**: programar que se laven. Asearse es un comportamiento, y
+los comportamientos no se escriben nunca. Lo que sí se pone es la física debajo
+para que *pueda* pasar: estar mojado enfría, y el agua diluye lo que llevas
+encima. Si un linaje aprende a meterse al agua cuando aprieta el calor o cuando
+está enfermo, eso lo descubrieron ellos, y puede no pasar nunca.
+
+**Por qué la sed vale la pena aunque parezca más trabajo**: es un segundo hambre
+que no se come. Obliga a ir del agua a la comida y de la comida al agua, y eso
+hace **rutas**. Y por las rutas se pisa el suelo, y las marcas del suelo ya
+existen desde el tick cero.
+
+**Almacenar agua**: el cuerpo es el almacén. Cuánta aguantas dentro es un rasgo
+del genoma, como todo. Un linaje al que le salga guardar más puede vivir lejos
+del agua; a los demás los ata la charca. Eso es un camello, y sale de la
+selección, no de una regla. Llevar agua en un cacharro necesitaría objetos que
+contengan líquido: mucho más caro, y queda para mucho más adelante.
+
+---
+
+## D15 — El mar es habitable; volar, todavía no
+
+**Se elige**: las celdas de agua son habitables, y que un cuerpo aguante o no
+ahí lo decide su genoma. **No** se añade volar.
+
+**Por qué el mar sí**: es el 60 % del planeta y ahora mismo es un desierto donde
+no puede vivir nadie — más de la mitad del mundo tirada. Y es barato: no hace
+falta ninguna maquinaria nueva, solo dejar que el agua sea un sitio donde estar.
+Lo que abre: un linaje puede derivar hacia el agua y adaptarse, y con el tiempo
+haber bichos de tierra y bichos de mar salidos del mismo abuelo, con la orilla
+como frontera entre dos mundos.
+
+**Por qué volar no, de momento**: necesita una tercera dimensión — altura por
+criatura, visión en 3D, vecinos en 3D — y sobre todo **cambia el verbo de
+moverse**, que hoy son dos números y pasaría a ser tres. Eso hace saltar el test
+que impide añadir verbos, y con razón: es una reforma grande. Primero que el
+mundo funcione en dos dimensiones.
+
+**El premio de consolación honesto**: un cuerpo muy ligero podría cruzar agua
+sin hundirse. No es volar, pero es otro nicho y sale gratis.
+
+---
+
+## D16 — La orilla es una playa, no una muralla
+
+**Se elige**: la tierra más baja queda a un paso del agua. Los acantilados salen
+solo donde una meseta alta se asoma al mar.
+
+**Por qué**: fue un error mío y se vio mirando el planeta dibujado. Para que los
+continentes tuvieran grosor levanté toda la tierra sobre el mar, y convertí el
+litoral entero del planeta en una pared infranqueable. Un mundo donde no se
+puede bajar al agua pierde la orilla, que es donde más cosas se cruzan.
+
+**Lo que esto obliga más adelante**: cuando moverse cueste según el desnivel, la
+diferencia será física real — por la playa se baja, por el cantil no. O sea que
+**el terreno decide qué grupos quedan aislados de cuáles**, y por lo tanto qué
+poblaciones pueden divergir. El relieve no es decorado.
+
+---
+
+## D17 — La crónica y los datos se adelantan
+
+**Se elige**: sacar de la fase 5 una versión sencilla de las dos y ponerla en
+cuanto haya algo vivo que contar.
+
+**Por qué**: si el fin es mirar (D9), no poder ver es el fracaso principal. Y hay
+una razón práctica además: yo tampoco puedo saber si lo que construyo funciona
+sin verlo.
+
+**Son dos cosas distintas**:
+- **La crónica** es el diario, escrito sobrio: *"el linaje verdoso del norte se
+  extinguió"*, *"dos grupos que nunca se habían tocado se encontraron en la
+  costa"*.
+- **Los datos** son las curvas: población, nacimientos, muertes, edad media al
+  morir, linajes vivos, biomasa.
+
+**La regla que las mantiene honestas**: la crónica solo puede contar lo que un
+detector encuentre de verdad en los datos. Nada de frases escritas a mano para
+que quede bonito. La crónica y los nueve detectores son la misma máquina — el
+diario es la voz de los detectores.
