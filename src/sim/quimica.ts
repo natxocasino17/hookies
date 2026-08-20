@@ -27,6 +27,7 @@ import {
   ENERGIA_ENLACE_ATOMO,
   ESTABILIDAD_ATOMO,
   INTENTOS_DE_REACCION,
+  LOTES_DE_QUIMICA,
   MAX_VECINOS,
   N_TIPOS_ATOMO,
   ROTURA_POR_TEMPERATURA,
@@ -325,10 +326,18 @@ function reaccionarEnCelda(estado: EstadoMundo, celda: number): void {
   }
 }
 
-/** Un tick de química en todo el planeta. */
+/**
+ * Un tick de química.
+ *
+ * Solo reacciona una celda de cada LOTES_DE_QUIMICA, y cuál toca depende del
+ * número de tick — nunca de la cámara, del framerate ni de si hay alguien
+ * mirando. Es un recorte a la química para dejarle sitio a los bichos, tal y
+ * como manda CLAUDE.md §2.4, y está en el archivo de constantes para que se vea.
+ */
 export function avanzarLaQuimica(estado: EstadoMundo, geo: Geometria, alReves: boolean): void {
   estado.reaccionesEsteTick = 0;
-  for (let celda = 0; celda < geo.nCeldas; celda++) {
+  const turno = estado.tick % LOTES_DE_QUIMICA;
+  for (let celda = turno; celda < geo.nCeldas; celda += LOTES_DE_QUIMICA) {
     reaccionarEnCelda(estado, celda);
   }
   difundir(estado, geo, alReves);

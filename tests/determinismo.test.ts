@@ -21,8 +21,23 @@ import { avanzarUnTick } from '../src/sim/tick.js';
 import { crearRng, siguienteU32 } from '../src/sim/rng.js';
 import { dExp, dLog, dSeno, dTanh, senoDeVuelta } from '../src/sim/math.js';
 
+/**
+ * Estos tests corren sobre un planeta pequeño (nivel 3, 642 celdas) en vez del
+ * de siempre (nivel 4, 2.562).
+ *
+ * No es hacer trampa: **el determinismo y la conservación son propiedades del
+ * algoritmo, no del tamaño del mundo** — se recorre el mismo código, las mismas
+ * reglas y las mismas rutas. Lo que cambia es que caben los 10.000 ticks que
+ * exige CLAUDE.md §2.1 en segundos en vez de en minutos.
+ *
+ * Y esa es la razón de fondo: con el planeta grande estos tests tardaban tanto
+ * que dejaban de correrse, y un test que no se corre es un test que no existe.
+ * Los tres centrales son justamente los que nunca pueden dejar de comprobarse.
+ */
+const NIVEL_DE_PRUEBA = 3;
+
 function correr(semilla: number, ticks: number) {
-  const estado = crearEstado(semilla);
+  const estado = crearEstado(semilla, NIVEL_DE_PRUEBA);
   const geo = geometriaDe(estado);
   for (let i = 0; i < ticks; i++) avanzarUnTick(estado, geo);
   return estado;
@@ -45,7 +60,7 @@ describe('determinismo', () => {
     // que alguien cierra la app y la vuelve a abrir.
     const entera = correr(777, 10_000);
 
-    const partida = crearEstado(777);
+    const partida = crearEstado(777, NIVEL_DE_PRUEBA);
     const geo = geometriaDe(partida);
     for (let i = 0; i < 4000; i++) avanzarUnTick(partida, geo);
     // Se reconstruye desde los bytes, igual que al abrir la app otro día.

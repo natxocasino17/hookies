@@ -605,6 +605,26 @@ export const EMPUJE_DEL_CATALIZADOR = 14;
  */
 export const ESCALA_ENERGIA_QUIMICA = 0.004;
 
+/**
+ * En cuántos lotes se reparte la química.
+ *
+ * Cada tick solo reacciona una celda de cada LOTES; las demás esperan su turno.
+ * Es la aplicación literal de la regla del proyecto (CLAUDE.md §2.4): **si no
+ * cabe, se recorta la química antes que los bichos.**
+ *
+ * Medido sin lotes: el tick costaba 13,35 ms de los 16 de presupuesto, y 11,22
+ * eran la química sola — con el mundo todavía sin una sola criatura y sin un
+ * solo cerebro, que es donde estaba la estimación peligrosa (RIESGOS §4). Con 8
+ * lotes la química baja a algo más de un milisegundo y deja el presupuesto casi
+ * entero libre para lo que viene.
+ *
+ * El reparto es **función del número de tick**, nunca de la cámara, del
+ * framerate ni de si hay una pestaña abierta mirando (CLAUDE.md §2.1). Lo que
+ * cambia es que la química corre ocho veces más despacio que el resto del
+ * mundo, y eso hay que tenerlo en cuenta al leer sus tiempos.
+ */
+export const LOTES_DE_QUIMICA = 8;
+
 /** Difusión de moléculas entre celdas vecinas. Más alto = más lenta. */
 export const DIFUSION_QUIMICA_DIVISOR = 12;
 
