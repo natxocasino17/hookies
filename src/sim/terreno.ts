@@ -7,7 +7,7 @@
  */
 
 import {
-  ALZADO_DE_LA_TIERRA,
+  ALZADO_DE_LA_ORILLA,
   COMPRESION_FONDO_MARINO,
   ESCALA_RELIEVE,
   HUNDIDO_DEL_MAR,
@@ -58,9 +58,9 @@ export function esAgua(altura: Float32Array, celda: number): boolean {
 /**
  * Radio al que dibujar la tapa de una celda, contando su relieve.
  *
- * Hay un escalón en la costa: la tierra empieza levantada y el mar empieza
- * hundido. El hueco entre las dos es el acantilado de la orilla, y existe en
- * todo el litoral del planeta.
+ * La tierra más baja queda a un paso del agua —eso es una playa, y por ahí se
+ * baja al mar— mientras que el fondo marino se hunde de verdad. Los acantilados
+ * salen solos donde una meseta alta se asoma al mar, no en toda la costa.
  */
 export function radioDeCelda(alturaCelda: number, radioPlaneta: number): number {
   if (alturaCelda < NIVEL_DEL_MAR) {
@@ -72,7 +72,7 @@ export function radioDeCelda(alturaCelda: number, radioPlaneta: number): number 
     return radioPlaneta * (1 + (NIVEL_DEL_MAR - profundidad) * ESCALA_RELIEVE);
   }
   const sobreElMar = alturaCelda - NIVEL_DEL_MAR;
-  return radioPlaneta * (1 + (NIVEL_DEL_MAR + ALZADO_DE_LA_TIERRA + sobreElMar) * ESCALA_RELIEVE);
+  return radioPlaneta * (1 + (NIVEL_DEL_MAR + ALZADO_DE_LA_ORILLA + sobreElMar) * ESCALA_RELIEVE);
 }
 
 /** Radio de la superficie del océano. La usa el dibujo para poner la bola de agua. */

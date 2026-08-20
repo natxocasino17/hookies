@@ -77,9 +77,11 @@ export const NIVEL_DEL_MAR = 0.02;
  * Es exageración a propósito: con la altura real de las montañas de la Tierra,
  * un planeta de este tamaño se vería completamente liso. Medido sobre varias
  * semillas, la tierra llega a 0,67 de altura cruda, así que los picos quedan a
- * un 8 % del radio y las montañas se leen desde lejos.
+ * un 14 % del radio y las montañas se leen desde lejos. Con 0,12 el planeta
+ * salía plano: los escalones de tierra adentro medían cuatro píxeles y no se
+ * distinguían.
  */
-export const ESCALA_RELIEVE = 0.12;
+export const ESCALA_RELIEVE = 0.21;
 
 /**
  * Cuánto se aplasta la profundidad del fondo marino al dibujarlo.
@@ -91,18 +93,31 @@ export const ESCALA_RELIEVE = 0.12;
 export const COMPRESION_FONDO_MARINO = 0.35;
 
 /**
- * El escalón de la costa: cuánto se levanta toda la tierra sobre el nivel del
- * mar, y cuánto se hunde todo el fondo marino por debajo.
+ * El escalón de la orilla: lo poquito que se levanta la tierra más baja sobre
+ * el nivel del mar.
  *
- * No es maquillaje, resuelve dos cosas a la vez. Sin el hundido, los bajíos
- * quedan a la misma altura que la superficie del agua y asoman por encima
- * peleándose con ella. Sin el levantado, los continentes son una lámina sin
- * grosor en vez de bloques de tierra.
+ * Es pequeño A PROPÓSITO, y es una corrección de un error. Estaba en 0,16 para
+ * que los continentes se vieran como bloques con grosor, y el resultado fue que
+ * **toda la costa del planeta era un acantilado infranqueable**: ningún bicho
+ * podría bajar nunca al agua. Un mundo donde el mar es inalcanzable desde la
+ * tierra pierde de golpe la orilla, que es el sitio donde más cosas se cruzan.
  *
- * Y de paso deja lo que se buscaba: **un acantilado en toda la línea de costa**,
- * que es donde se junta todo lo interesante.
+ * Con 0,04 la tierra más baja queda a un paso del agua — eso es una playa — y
+ * los acantilados aparecen solo donde una meseta alta se asoma al mar, que es
+ * lo que pasa en las costas de verdad. El grosor de los continentes ya lo da el
+ * hundido del fondo marino, no hace falta levantar la tierra para eso.
+ *
+ * Cuando en la fase 3 moverse entre celdas cueste según el desnivel, esta
+ * diferencia será física real: por la playa se pasa, por el cantil no.
  */
-export const ALZADO_DE_LA_TIERRA = 0.16;
+export const ALZADO_DE_LA_ORILLA = 0.04;
+
+/**
+ * Cuánto se hunde todo el fondo marino por debajo del nivel del mar.
+ *
+ * Sin esto los bajíos quedan a la misma altura que la superficie del agua y
+ * asoman por encima peleándose con ella.
+ */
 export const HUNDIDO_DEL_MAR = 0.14;
 
 /**
@@ -112,8 +127,11 @@ export const HUNDIDO_DEL_MAR = 0.14;
  * estético: como cada celda es un prisma de tapa plana, dos celdas vecinas con
  * escalones distintos dejan un acantilado entre ellas. De ahí sale el aspecto
  * de mesetas y cantiles, y sale de la geometría, no de un filtro.
+ *
+ * Menos escalones = escalones más altos = mesetas más marcadas. Con 12 el
+ * terreno quedaba demasiado suave para leerse desde lejos.
  */
-export const ESCALONES_RELIEVE = 12;
+export const ESCALONES_RELIEVE = 8;
 
 // ---------------------------------------------------------------------------
 // El reloj
