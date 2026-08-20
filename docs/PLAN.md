@@ -120,7 +120,37 @@ sigue conservándose exactamente con la difusión sobre la nueva tabla de vecino
 5. 30 fps en un móvil de gama media, con la simulación por debajo de su
    presupuesto.
 
-## Fase 2 — Química
+## Fase 2 — Química  ·  PASA EL CRITERIO, CON UN PERO GRANDE
+
+**Resultado medido**, 12.000 ticks por semilla:
+
+- Átomos conservados exactos. La sopa no se para: unas 2.300 uniones por tick
+  sostenidas, sin caer a cero.
+- Entre 42 y 241 moléculas distintas vivas, de largo medio 2,7 átomos.
+- **Aparecen moléculas autocatalíticas en el 100 % de las semillas probadas**,
+  unas 36 directas y 3 parejas que se ayudan mutuamente, sin que nadie las
+  pusiera. Ejemplo: `EBEB` lleva dentro `EB`, que es justo lo que hace falta
+  para sujetar el enlace entre la B del final de un `EB` y la E del principio
+  del siguiente. Se ayuda a nacer a sí misma.
+
+**El pero, y es serio.** De las **811.020** cadenas que las reglas permitirían
+que fueran autocatalíticas, solo aparecen **36**, y son **exactamente las mismas
+en todas las semillas**. El mundo no explora: cristaliza siempre en los mismos
+patrones alternos simples (`EBEB`, `DCDC`, `CDC`).
+
+*Diagnóstico*: la regla de afinidad es de todo o nada — cada átomo encaja con
+exactamente uno y con ningún otro — así que **solo pueden crecer cadenas
+estrictamente alternas**. Cualquier cadena que no alterne es imposible de
+formar, y ahí se va el 99,99 % del espacio.
+
+*Qué tocar, en este orden*: (1) afinidad graduada en vez de binaria, para que
+enlaces menos favorables sean improbables pero no imposibles; (2) si con eso no
+basta, subir el largo máximo de cadena; (3) por último, más tipos de átomo.
+**Lo que no se hace**: sembrar a mano moléculas interesantes.
+
+---
+
+### Lo que se construyó
 
 **Se construye**
 

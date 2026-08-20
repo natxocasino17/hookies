@@ -13,6 +13,9 @@
 import {
   AGUA_INICIAL_OCEANO,
   AGUA_INICIAL_SUELO,
+  ESCALA_ENERGIA_QUIMICA,
+  N_TIPOS_ATOMO,
+  TOP_N_MOLECULAS,
   GENES_PLANTA,
   MAX_PLANTAS,
   PLANTAS_INICIALES,
@@ -27,6 +30,7 @@ import { MARCA_ARCHIVO, migrar, VERSION_ESQUEMA } from './esquema.js';
 import { celdasDelNivel, construirGeometria, type Geometria } from './geodesica.js';
 import { generarAltura } from './terreno.js';
 import { materiaEnPlantas, sembrarPrimerasPlantas } from './plantas.js';
+import { sembrarLaSopa } from './quimica.js';
 
 export interface EstadoMundo {
   /** Semilla con la que nació este mundo. Junto con las intervenciones, lo define entero. */
@@ -121,6 +125,19 @@ export interface EstadoMundo {
   plantasVivas: number;
   masaVegetal: number;
 
+  // --- La química -----------------------------------------------------------
+  //
+  /** Átomos sueltos de cada tipo en cada celda: N_TIPOS_ATOMO por celda. */
+  atomosLibres: Int32Array;
+  /** Las moléculas que sigue cada celda: TOP_N_MOLECULAS por celda, 0 = hueco. */
+  sopaMolecula: Int32Array;
+  /** Cuántas hay de cada una. */
+  sopaCantidad: Int32Array;
+  /** Cuánto calienta la química. Se guarda aquí para no leer constantes en el bucle. */
+  escalaEnergiaQuimica: number;
+  /** Uniones que ocurrieron en el último tick. Solo para la telemetría. */
+  reaccionesEsteTick: number;
+
   /**
    * Memoria de trabajo del arrastre por el viento.
    *
@@ -153,6 +170,8 @@ const BYTES_CABECERA = 64;
 const CAMPOS_POR_CELDA = 5;
 /** Bytes por planta: celda, masa, edad y fruto en enteros, más sus genes. */
 const BYTES_POR_PLANTA = 16 + GENES_PLANTA;
+/** Bytes por celda de la sopa: átomos sueltos más las moléculas con su cantidad. */
+const BYTES_SOPA_POR_CELDA = N_TIPOS_ATOMO * 4 + TOP_N_MOLECULAS * 8;
 
 /** Crea un mundo nuevo. Determinista: la misma semilla da siempre el mismo mundo. */
 export function crearEstado(
@@ -200,11 +219,20 @@ export function crearEstado(
     cursorPlanta: 0,
     plantasVivas: 0,
     masaVegetal: 0,
+    atomosLibres: new Int32Array(geo.nCeldas * N_TIPOS_ATOMO),
+    sopaMolecula: new Int32Array(geo.nCeldas * TOP_N_MOLECULAS),
+    sopaCantidad: new Int32Array(geo.nCeldas * TOP_N_MOLECULAS),
+    escalaEnergiaQuimica: ESCALA_ENERGIA_QUIMICA,
+    reaccionesEsteTick: 0,
     copiaEnteros: new Int32Array(geo.nCeldas),
     copiaDecimales: new Float32Array(geo.nCeldas),
     energiaEntrada: 0,
     energiaSalida: 0,
   };
+
+  // La sopa arranca con átomos sueltos en cada celda. A partir de aquí solo se
+  // reordenan: no nace ni desaparece ni uno.
+  sembrarLaSopa(estado);
 
   // Las primeras plantas se reparten por la tierra. Su materia sale del suelo,
   // no de la nada, así que la masa total del mundo no cambia por sembrarlas.
@@ -229,7 +257,7 @@ export function materiaTotal(estado: EstadoMundo): number {
 export function serializar(estado: EstadoMundo): Uint8Array {
   const n = estado.nCeldas;
   const bytes = new Uint8Array(
-    BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA + MAX_PLANTAS * BYTES_POR_PLANTA,
+    BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA + MAX_PLANTAS * BYTES_POR_PLANTA + n * BYTES_SOPA_POR_CELDA,
   );
   const vista = new DataView(bytes.buffer);
 
@@ -271,6 +299,16 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   }
   bytes.set(estado.plantaGenoma, plantas + MAX_PLANTAS * 16);
 
+  const sopa = plantas + MAX_PLANTAS * BYTES_POR_PLANTA;
+  for (let i = 0; i < n * N_TIPOS_ATOMO; i++) {
+    vista.setInt32(sopa + i * 4, estado.atomosLibres[i]!, true);
+  }
+  const moleculas = sopa + n * N_TIPOS_ATOMO * 4;
+  for (let i = 0; i < n * TOP_N_MOLECULAS; i++) {
+    vista.setInt32(moleculas + i * 8, estado.sopaMolecula[i]!, true);
+    vista.setInt32(moleculas + i * 8 + 4, estado.sopaCantidad[i]!, true);
+  }
+
   return bytes;
 }
 
@@ -303,7 +341,10 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   if (n !== celdasDelNivel(nivel)) {
     throw new Error(`El archivo dice ${n} celdas, pero el nivel ${nivel} tiene ${celdasDelNivel(nivel)}.`);
   }
-  if (bytes.byteLength < BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA + MAX_PLANTAS * BYTES_POR_PLANTA) {
+  if (
+    bytes.byteLength <
+    BYTES_CABECERA + n * 4 * CAMPOS_POR_CELDA + MAX_PLANTAS * BYTES_POR_PLANTA + n * BYTES_SOPA_POR_CELDA
+  ) {
     throw new Error('El archivo del mundo está incompleto o cortado.');
   }
 
@@ -350,6 +391,19 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   const genomaEn = plantasEn + MAX_PLANTAS * 16;
   const plantaGenoma = bytes.slice(genomaEn, genomaEn + MAX_PLANTAS * GENES_PLANTA);
 
+  const sopaEn = plantasEn + MAX_PLANTAS * BYTES_POR_PLANTA;
+  const atomosLibres = new Int32Array(n * N_TIPOS_ATOMO);
+  for (let i = 0; i < atomosLibres.length; i++) {
+    atomosLibres[i] = vista.getInt32(sopaEn + i * 4, true);
+  }
+  const moleculasEn = sopaEn + n * N_TIPOS_ATOMO * 4;
+  const sopaMolecula = new Int32Array(n * TOP_N_MOLECULAS);
+  const sopaCantidad = new Int32Array(n * TOP_N_MOLECULAS);
+  for (let i = 0; i < sopaMolecula.length; i++) {
+    sopaMolecula[i] = vista.getInt32(moleculasEn + i * 8, true);
+    sopaCantidad[i] = vista.getInt32(moleculasEn + i * 8 + 4, true);
+  }
+
   return {
     semilla: vista.getUint32(8, true),
     tick: tickAlto * 4294967296 + tickBajo,
@@ -373,6 +427,11 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     cursorPlanta: vista.getUint32(60, true),
     plantasVivas: vivas,
     masaVegetal,
+    atomosLibres,
+    sopaMolecula,
+    sopaCantidad,
+    escalaEnergiaQuimica: ESCALA_ENERGIA_QUIMICA,
+    reaccionesEsteTick: 0,
     copiaEnteros: new Int32Array(n),
     copiaDecimales: new Float32Array(n),
     energiaEntrada: vista.getFloat64(44, true),

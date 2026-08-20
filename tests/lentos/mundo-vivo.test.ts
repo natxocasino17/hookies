@@ -22,6 +22,8 @@ import { crearEstado, geometriaDe, materiaTotal } from '../../src/sim/estado.js'
 import { avanzarUnTick } from '../../src/sim/tick.js';
 import { aguaTotal, direccionDelSol } from '../../src/sim/clima.js';
 import { GEN_TEMPERATURA } from '../../src/sim/plantas.js';
+import { atomosTotales, censoDeMoleculas } from '../../src/sim/quimica.js';
+import { buscarCiclos } from '../../src/sim/autocatalisis.js';
 
 describe('el clima', () => {
   it('el agua del planeta no cambia jamás', () => {
@@ -203,5 +205,40 @@ describe('las plantas', () => {
     const media = (l: number[]) => l.reduce((s, v) => s + v, 0) / l.length;
     // Las del trópico prefieren más calor que las de latitudes altas.
     expect(media(calidas)).toBeGreaterThan(media(frias) + 8);
+  });
+});
+
+describe('la química', () => {
+  it('los átomos del planeta no cambian jamás', () => {
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    const inicial = atomosTotales(estado);
+    for (let i = 0; i < 4000; i++) avanzarUnTick(estado, geo);
+    expect(atomosTotales(estado)).toBe(inicial);
+  });
+
+  it('la sopa no se para ni se queda en un puñado de moléculas', () => {
+    // Los dos modos de fallo de la fase 2: que todo llegue al equilibrio y se
+    // quede quieto, o que se colapse a tres sustancias.
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < 6000; i++) avanzarUnTick(estado, geo);
+
+    expect(estado.reaccionesEsteTick).toBeGreaterThan(100);
+    const censo = censoDeMoleculas(estado);
+    expect(censo.distintas).toBeGreaterThan(10);
+    expect(censo.longitudMedia).toBeGreaterThan(1.5);
+  });
+
+  it('aparecen moléculas autocatalíticas sin que nadie las ponga', () => {
+    // El criterio de aceptación de la fase 2. Ojo al matiz honesto: aparecen
+    // siempre, pero son SIEMPRE LAS MISMAS en cualquier semilla, porque quién
+    // puede catalizarse a sí misma lo decide el alfabeto y no el mundo.
+    const estado = crearEstado(1234);
+    const geo = geometriaDe(estado);
+    for (let i = 0; i < 6000; i++) avanzarUnTick(estado, geo);
+
+    const hallazgo = buscarCiclos(estado);
+    expect(hallazgo.directas.length).toBeGreaterThan(0);
   });
 });

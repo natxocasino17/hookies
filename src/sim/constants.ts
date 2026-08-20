@@ -512,14 +512,107 @@ export const TOPE_POBLACION_SEGURIDAD = 4000;
 // cuando llegue su fase. Todavía no los usa nadie.
 // ---------------------------------------------------------------------------
 
-/** Fase 2. Longitud máxima de una molécula del ambiente, en átomos. */
-export const MAX_CADENA_SOPA = 12;
+// ---------------------------------------------------------------------------
+// LA QUÍMICA
+//
+// El único catálogo que el proyecto permite (CLAUDE.md §1.3): el alfabeto de
+// átomos y las reglas de reescritura. Son pocas, son las leyes físicas del
+// mundo y no cambian nunca. Toda la variedad sale del espacio de cadenas, no
+// de esta tabla — con 6 átomos y cadenas de hasta 8 hay 1,7 millones de
+// moléculas distintas posibles, y ninguna está escrita en ningún sitio.
+// ---------------------------------------------------------------------------
 
-/** Fase 2. Tipos de átomo del alfabeto. Único catálogo permitido en el código. */
+/** Tipos de átomo. Es el alfabeto del mundo. */
 export const N_TIPOS_ATOMO = 6;
 
-/** Fase 2. Moléculas seguidas por celda; el resto va al depósito inerte. */
+/**
+ * Longitud máxima de una molécula del ambiente, en átomos.
+ *
+ * Ocho y no doce por una razón de representación, y conviene que quede escrita:
+ * una molécula tiene que caber en **un solo entero de 32 bits** para que el
+ * bucle caliente no toque ni un objeto ni una cadena de texto. Con 6 tipos de
+ * átomo hacen falta 3 bits por átomo, más 4 para la longitud: 8 átomos son 28
+ * bits y entra; 12 serían 40 y no entra.
+ */
+export const MAX_CADENA_SOPA = 8;
+
+/**
+ * Afinidad de cada tipo de átomo, de 0 a 5.
+ *
+ * Dos átomos se unen bien cuando sus afinidades **se complementan** (suman lo
+ * mismo que el alfabeto menos uno). Es el equivalente al emparejamiento de
+ * bases: no hay tabla de qué se une con qué, hay un número por átomo y una
+ * regla.
+ */
+export const AFINIDAD_ATOMO = [0, 1, 2, 3, 4, 5];
+
+/**
+ * Energía que suelta cada tipo de átomo al formar un enlace, y que hay que
+ * devolverle para romperlo. Va y viene de la temperatura de la celda.
+ */
+export const ENERGIA_ENLACE_ATOMO = [0.6, 1.4, 0.9, 2.1, 1.1, 1.7];
+
+/**
+ * Lo que aguanta cada átomo el calor antes de que sus enlaces se rompan.
+ * Los inestables son los que hacen que la sopa no se quede quieta.
+ */
+export const ESTABILIDAD_ATOMO = [1.0, 2.4, 1.6, 3.0, 1.3, 2.0];
+
+/** Moléculas distintas que se siguen por celda. El resto son átomos sueltos. */
 export const TOP_N_MOLECULAS = 24;
+
+/** Átomos sueltos de cada tipo con los que arranca cada celda. */
+export const ATOMOS_INICIALES_POR_TIPO = 160;
+
+/**
+ * Intentos de reacción por celda y tick.
+ *
+ * NO se prueban todas las parejas posibles: con 24 moléculas por celda serían
+ * 576 parejas por 24 catalizadores candidatos, que son 35 millones de
+ * comprobaciones por tick en el planeta entero. En vez de eso se tiran unos
+ * pocos dados por celda, con las moléculas más concentradas saliendo más a
+ * menudo. Es lo mismo que hace la química de verdad: las reacciones ocurren
+ * cuando dos cosas se chocan, y se chocan más las que abundan.
+ */
+export const INTENTOS_DE_REACCION = 8;
+
+/** Cuánto multiplica la temperatura la probabilidad de que un enlace se rompa. */
+export const ROTURA_POR_TEMPERATURA = 0.018;
+
+/** Probabilidad base, entre mil, de que dos moléculas que se encuentran se unan. */
+export const UNION_POR_MIL = 240;
+
+/** Probabilidad base, entre mil, de que un átomo suelto sustituya a otro. */
+export const SUSTITUCION_POR_MIL = 40;
+
+/**
+ * Cuánto multiplica un catalizador la probabilidad de una reacción.
+ *
+ * Este es **el número que decide si la fase 2 sale o no** (RIESGOS §2a). Sin
+ * catálisis no hay autocatálisis y no hay nada: ninguna molécula influiría en
+ * una reacción en la que no participa, y el mundo se quedaría en una sopa
+ * inerte. Si no aparecen ciclos, esto es lo primero que se toca.
+ */
+export const EMPUJE_DEL_CATALIZADOR = 14;
+
+/**
+ * Cuánto calienta o enfría la química a la celda donde ocurre.
+ *
+ * Formar un enlace suelta energía y romperlo la consume, y esa energía sale y
+ * entra de la temperatura local. El número es pequeño a propósito: con 8
+ * intentos por celda y tick, un valor grande haría que la sopa se calentara a sí
+ * misma hasta hervir el planeta.
+ */
+export const ESCALA_ENERGIA_QUIMICA = 0.004;
+
+/** Difusión de moléculas entre celdas vecinas. Más alto = más lenta. */
+export const DIFUSION_QUIMICA_DIVISOR = 12;
+
+/** Cada cuántos ticks se busca si hay ciclos autocatalíticos vivos. */
+export const DETECTAR_CICLOS_CADA = 512;
+
+/** Reacciones que se recuerdan para buscar ciclos. Es una ventana, no un historial. */
+export const MEMORIA_DE_REACCIONES = 4096;
 
 /**
  * Fase 3. Longitud máxima del genoma, en átomos (decisión D2).
