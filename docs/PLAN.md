@@ -332,6 +332,17 @@ guardar/cargar. La huella del mundo a 8.000 ticks es idéntica antes y después
 del atajo (`3226744334`), que es la prueba de que es velocidad y no un cambio de
 física.
 
+**Un test viejo que llevaba fallando sin saberlo.** La tanda lenta pedía más de
+100 uniones químicas en un tick y salían 50. No era la sopa: la escasez del
+commit anterior dejó seis veces menos átomos libres y `UNION_POR_MIL` bajó de
+620 a 45, así que se une menos cosa por tick — que es justo lo que se buscaba —
+y la tanda lenta no se volvió a correr después de aquel cambio. Medido: mediana
+68 uniones por tick, rango 49–91, y con el puente cerrado y cero criaturas sale
+exactamente lo mismo, así que los cuerpos no tienen nada que ver. La sopa está
+viva: 15.305 moléculas distintas y cadenas de 6,11 átomos de media. El test
+ahora mide una barrida entera del planeta en vez de un tick suelto, porque la
+química va en ocho lotes y un tick es un octavo del mundo.
+
 **Y una advertencia sobre esos milisegundos.** Al final de la sesión la misma
 medición daba 72–88 ms/tick, con siete criaturas vivas y todo. La máquina se
 había vuelto unas diez veces más lenta —misma carga, mismo proceso, cuatro CPUs

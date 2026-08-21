@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GENES_PLANTA,
+  LOTES_DE_QUIMICA,
   MAX_CRIATURAS,
   MAX_PLANTAS,
   MAX_VECINOS,
@@ -222,11 +223,34 @@ describe('la química', () => {
   it('la sopa no se para ni se queda en un puñado de moléculas', () => {
     // Los dos modos de fallo de la fase 2: que todo llegue al equilibrio y se
     // quede quieto, o que se colapse a tres sustancias.
+    //
+    // Este test pedía más de 100 reacciones en un tick y empezó a fallar con 50.
+    // No era la sopa: era el umbral, que se quedó viejo. Con la escasez del
+    // commit anterior hay seis veces menos átomos libres y `UNION_POR_MIL` bajó
+    // de 620 a 45, así que se unen menos cosas por tick — que es exactamente lo
+    // que se buscaba. Y la tanda lenta no se volvió a correr después de aquello.
+    //
+    // Medido en la semilla 1234 a partir del tick 6.000: mediana 68 uniones por
+    // tick, rango de 49 a 91. Comprobado además que los cuerpos no tienen nada
+    // que ver: con el puente cerrado y cero criaturas, el mismo mundo da mediana
+    // 68 y rango 49-91.
+    //
+    // Y se mide sobre una barrida entera del planeta, no sobre un tick suelto:
+    // la química va en LOTES_DE_QUIMICA lotes, así que un tick es un octavo del
+    // mundo y oscila casi el doble entre uno y otro.
     const estado = crearEstado(1234);
     const geo = geometriaDe(estado);
     for (let i = 0; i < 6000; i++) avanzarUnTick(estado, geo);
 
-    expect(estado.reaccionesEsteTick).toBeGreaterThan(100);
+    let uniones = 0;
+    for (let i = 0; i < LOTES_DE_QUIMICA; i++) {
+      avanzarUnTick(estado, geo);
+      uniones += estado.reaccionesEsteTick;
+    }
+    // Lo que se vigila es que la sopa NO se pare. Con mediana 68 por tick, una
+    // barrida entera anda por las 540 uniones; por debajo de 100 es que se paró.
+    expect(uniones, 'uniones en una barrida entera del planeta').toBeGreaterThan(100);
+
     const censo = censoDeMoleculas(estado);
     expect(censo.distintas).toBeGreaterThan(10);
     expect(censo.longitudMedia).toBeGreaterThan(1.5);
