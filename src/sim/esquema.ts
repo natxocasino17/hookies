@@ -28,8 +28,14 @@
  *
  * v4: llegan los cuerpos, con su genoma de miles de átomos. Sin migración por lo
  * mismo de siempre.
+ *
+ * v5: cada cuerpo lleva la materia que tiene apartada en un gameto. Va al
+ * archivo porque es materia del mundo: si no se guardara, cargar un mundo haría
+ * desaparecer un puñado de átomos y el test de masa lo cazaría. Sin migración,
+ * por lo mismo de siempre: la persistencia es de la fase 6 y no hay ni un mundo
+ * guardado en ningún disco.
  */
-export const VERSION_ESQUEMA = 4;
+export const VERSION_ESQUEMA = 5;
 
 /** Marca al principio del archivo, para no intentar abrir cualquier cosa. */
 export const MARCA_ARCHIVO = 0x484f4f4b; // "HOOK"

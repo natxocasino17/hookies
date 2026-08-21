@@ -307,6 +307,79 @@ Lo que dice esa tabla, en orden de importancia:
   fase se cumple —unos aguantan y otros no— pero acaba en casi monocultivo, y eso
   hay que mirarlo cuando lleguen la especiación y el sexo.
 
+### El sexo, y las especies que salieron de él
+
+Con los cuerpos vivos y reproduciéndose, tocaba lo que pide el plan: gametos
+químicamente compatibles al entrar en contacto. **Sin verbo nuevo** — CLAUDE.md
+§1.2 dice que aparearse es contacto más química, y eso es literalmente lo que
+hay: nadie busca pareja, nadie elige y a nadie se le premia por juntarse.
+
+Lo primero que escribí estaba mal, y se vio midiendo. Puse que dos cuerpos
+fértiles que coincidieran en una celda juntaran gametos. Resultado: **18 cruces
+en 19.519 nacimientos**. La razón es que un cuerpo que llega al umbral de
+fertilidad gema en ese mismo tick y vuelve a estar por debajo, así que dos no se
+solapan fértiles jamás. Eso no eran gametos: era "dos cuerpos fértiles que se
+tocan". **Un gameto es algo que se lleva encima**, y esa diferencia lo es todo.
+
+La segunda versión —el gameto como materia apartada que el cuerpo transporta—
+extinguió el mundo entero: de 875 criaturas vivas a cero. El gameto era peso
+muerto, porque si no aparecía pareja esa materia no se podía usar para nada y
+además dejaba al cuerpo por debajo del umbral para gemar. La corrección es la
+que tenía que haber estado desde el principio: **gemar también gasta el gameto**.
+Un cuerpo solo pone las dos mitades; dos cuerpos ponen una cada uno. El gameto
+nunca se desperdicia, solo espera.
+
+Con eso, la semilla 1234:
+
+| tick | vivas | nacimientos | de dos | linajes | especies | parecido mín/medio |
+|---|---|---|---|---|---|---|
+| 2.000 | 3 | 51 | 0 | 1 | 1 | 1,000 / 1,000 |
+| 4.000 | 539 | 1.759 | **1.251** | 3 | **2** | 0,313 / 0,941 |
+| 8.000 | 979 | 25.788 | **19.610** | 4 | **2** | 0,297 / 0,683 |
+| 16.000 | 958 | 56.667 | 39.115 | 3 | 1 | 0,891 / 0,959 |
+
+Tres cosas de esa tabla:
+
+- **El sexo pasó a ser el camino normal**: tres de cada cuatro crías salen de
+  dos cuerpos. No porque se premie: porque una cría entre dos la pagan dos.
+- **Hubo dos especies conviviendo** entre los ticks 4.000 y 8.000, con un
+  parecido mínimo de 0,297 — muy por debajo del 0,75 que hace falta para
+  cruzarse. Eso es el criterio 4 de la fase, detectado por el censo y no
+  declarado en ninguna parte.
+- **El sexo cambió el mundo cualitativamente.** Antes, a los 8.000 ticks quedaba
+  un solo linaje con un parecido interno de 0,984: monocultivo. Ahora conviven
+  grupos incompatibles y el parecido medio baja a 0,683. Y en el 16.000 uno se
+  come al otro y vuelve a haber una sola especie — exclusión competitiva, que
+  también es un resultado.
+
+**Un fallo de los feos, y por qué no lo vio nadie.** El paso entre criaturas
+dentro del archivo guardado estaba escrito a mano como `c * 24` en cuatro sitios
+distintos. Al añadir el gameto como séptimo campo, cada criatura escribía su
+gameto **encima de la celda de la siguiente**: el mundo se guardaba mal y al
+cargarlo tenía otro futuro. Lo cazó el test de determinismo, y de milagro — el
+test de ida y vuelta que ya existía no lo vio porque corre sobre un mundo sin
+cuerpos y ni llegaba a tocar esos bytes. Arreglado atando el paso a una
+constante en vez de repetir el número, y con un test nuevo que pone valores
+reconocibles en los siete campos de doce criaturas y comprueba que ninguno pisa
+al vecino. Comprobado que el test tiene dientes: con el paso mal falla en 159 ms
+en vez de depender de que una corrida de diez minutos tenga la suerte de llevar
+gametos encima.
+
+(Los números de la tabla de arriba no están afectados: `serializar` lee el
+estado y escribe en un buffer aparte, así que el fallo solo estropeaba el
+archivo, nunca el mundo en marcha.)
+
+**Y el matiz honesto, que es el que importa.** Esas dos especies no son un linaje
+que se partió en dos: son dos linajes de puentes distintos, con genomas que
+nunca tuvieron nada que ver (el parecido entre ellos es 0,297, y entre dos
+genomas al azar es 0,328). Son dos especies según la única definición que hay en
+el proyecto —no pueden cruzarse—, pero **no ha habido especiación por
+divergencia**, que es lo que el criterio 4 pide de verdad. La cuenta de por qué:
+con `ERRATA_POR_DIEZ_MIL = 9`, dos ramas separadas se alejan un 0,18 % por
+generación, así que bajar de 0,98 a 0,75 pide unas 130 generaciones aisladas,
+que en este mundo son unos cuarenta mil ticks sin mezclarse. No se ha visto
+todavía. Y **no se va a subir la tasa de mutación para que salga antes**.
+
 **La vida necesita mundo.** Medido de paso: en el planeta de nivel 3 (642 celdas,
 el que usan los tests centrales) los cuerpos no aguantan — picos de 3, 7, 4 y 53
 y extinción total antes de los 12.000 ticks. Menos celdas es menos comida y

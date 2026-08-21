@@ -946,6 +946,95 @@ export const MATERIA_DE_LA_CRIA = 45;
 /** Energía que se lleva la cría. */
 export const ENERGIA_DE_LA_CRIA = 90;
 
+// --- Sexo, y por tanto especies --------------------------------------------
+//
+// No hay un verbo "aparearse" y no lo va a haber (CLAUDE.md §1.2): esto es
+// contacto más química. Dos cuerpos que están en la misma celda y que los dos
+// tienen de sobra para costear una cría juntan sus gametos, y si las dos cadenas
+// se parecen bastante, los gametos se funden. Nadie elige, nadie corteja y a
+// nadie se le premia por hacerlo: cuesta materia y energía, como todo.
+//
+// De aquí salen las especies, y por eso los dos números de abajo son los más
+// delicados del archivo. Medido en la semilla 1234 a los 8.000 ticks: las 1.114
+// criaturas vivas se parecen entre ellas entre 0,962 y 1,000 (mediana 0,983), y
+// dos genomas al azar se parecen 0,328. O sea que una población sana vive muy
+// arriba, el suelo está muy abajo, y hay un hueco enorme en medio donde poner el
+// umbral sin partir en dos nada que esté vivo.
+//
+// La cuenta de cuánto tarda en pasar algo, para no engañarse: con
+// ERRATA_POR_DIEZ_MIL = 9, dos linajes separados se alejan un 0,18 % por
+// generación. Bajar de 0,98 a 0,80 pide unas cien generaciones **aisladas**, que
+// en este mundo son unos treinta mil ticks. Puede pasar en una corrida larga y
+// puede no pasar nunca. Lo que NO se va a hacer es subir la tasa de mutación
+// para que la especiación salga a la hora que a mí me convenga.
+
+/**
+ * Por debajo de este parecido, dos gametos no se funden jamás. Es la definición
+ * operativa de "especies distintas", y no hay ninguna otra en el proyecto.
+ */
+/**
+ * Materia que un cuerpo aparta en un gameto, y lo que le cuesta apartarla.
+ *
+ * La mitad de una cría, porque una cría de dos se hace con los dos gametos y
+ * nada más. Que sea mucho más barato que gemar es lo que hace que el sexo pueda
+ * llegar a pasar: un cuerpo con un poco de sobra ya lleva gameto puesto y anda
+ * por el mundo con él, mientras que para desprender una cría uno solo hace falta
+ * un excedente grande. Sin esa diferencia, el gameto se gastaría en el mismo
+ * tick en que se fabrica y volveríamos a los 18 cruces de 19.519 nacimientos.
+ */
+export const MATERIA_DEL_GAMETO = 23;
+
+/**
+ * Lo que cuesta empaquetar el gameto.
+ *
+ * Bajo a propósito: la materia ya la tenía el cuerpo, esto es solo apartarla. La
+ * primera versión cobraba 12 y en una economía tan justa como esta eso bastaba
+ * para matar el mundo entero.
+ */
+export const ENERGIA_DEL_GAMETO = 2;
+
+export const PARECIDO_MINIMO_PARA_CRUZAR = 0.75;
+
+/**
+ * Por encima de este parecido, los gametos se funden siempre.
+ *
+ * Entre los dos números la probabilidad sube en rampa, y esa rampa **es** la
+ * fertilidad parcial de los híbridos: dos poblaciones que se están separando
+ * pasan por un tramo largo en el que cruzarse todavía se puede pero cuesta, en
+ * vez de haber un día en que de golpe dejan de poder. No hace falta ninguna
+ * regla aparte para los híbridos: un híbrido tiene el genoma a medio camino, así
+ * que se parece medianamente a los dos lados y le pasa lo mismo que a todos.
+ */
+export const PARECIDO_SEGURO_PARA_CRUZAR = 0.85;
+
+/**
+ * Átomos que se miran para calcular el parecido entre dos gametos.
+ *
+ * Menos que los 800 del análisis a posteriori porque esto se calcula dentro del
+ * bucle. Con 128 puntos el error de muestreo anda por el 4 %, que al lado del
+ * hueco que hay entre 0,75 y 0,96 no cambia ninguna decisión.
+ */
+export const MUESTRAS_DE_GAMETO = 128;
+
+/**
+ * Largo medio de un tramo heredado de golpe de un progenitor, en átomos.
+ *
+ * Tiene que ser mayor que VENTANA_DE_RASGO (24) o la recombinación no serviría
+ * de nada: si los tramos fueran más cortos que la ventana con la que se lee un
+ * rasgo, cada rasgo de la cría saldría siempre en el punto medio de sus padres.
+ * Con tramos largos, un rasgo puede venir entero de uno de los dos y aparecen
+ * combinaciones que no tenía ninguno.
+ */
+export const LARGO_DE_TRAMO = 300;
+
+/**
+ * Cuántas criaturas mira el detector de especies.
+ *
+ * Compara todas contra todas, así que el coste va al cuadrado. No es simulación:
+ * es telemetría, se llama cuando se quiere mirar y no cada tick.
+ */
+export const MUESTRAS_DE_ESPECIES = 240;
+
 /**
  * Edad mínima para poder reproducirse, en ticks. El gen de la fertilidad la
  * multiplica por un factor entre 0,4 y 2, así que el rango real va de 48 a 240

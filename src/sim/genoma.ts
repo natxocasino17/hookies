@@ -20,6 +20,7 @@
 
 import {
   ERRATA_POR_DIEZ_MIL,
+  LARGO_DE_TRAMO,
   MAX_CADENA_GENOMA,
   N_TIPOS_ATOMO,
   VENTANA_DE_RASGO,
@@ -113,6 +114,42 @@ export function copiarConErratas(
     if (siguienteEntero(rng, 10000) < ERRATA_POR_DIEZ_MIL) {
       // La errata es local: cambia a un átomo vecino en el alfabeto, no a uno
       // cualquiera. Así el rasgo se mueve un poco, no da un salto.
+      atomo = atomo + (siguienteEntero(rng, 2) === 0 ? -1 : 1);
+      if (atomo < 0) atomo = 0;
+      if (atomo >= N_TIPOS_ATOMO) atomo = N_TIPOS_ATOMO - 1;
+    }
+    genomas[destino + i] = atomo;
+  }
+}
+
+/**
+ * Mezcla dos genomas en uno, con erratas.
+ *
+ * Se recorre la cadena copiando de uno de los dos progenitores y, de vez en
+ * cuando, se cambia de progenitor. Eso es recombinación: la cría lleva tramos
+ * enteros de cada uno, no una media. Importa que sean tramos y no átomos
+ * sueltos, porque un rasgo se lee promediando una ventana ancha: mezclando
+ * átomo a átomo, cada rasgo de la cría saldría siempre en el punto medio de los
+ * padres y no habría nada nuevo. Con tramos largos, un rasgo puede venir entero
+ * de uno de los dos, y aparecen combinaciones que ninguno de los dos tenía.
+ *
+ * Las erratas son las mismas que al copiar: locales y de la misma tasa. Copiar
+ * miles de átomos sale mal de vez en cuando, se haga de uno o de dos.
+ */
+export function recombinarConErratas(
+  genomas: Uint8Array,
+  padreA: number,
+  padreB: number,
+  destino: number,
+  rng: EstadoRng,
+): void {
+  let deA = siguienteEntero(rng, 2) === 0;
+  for (let i = 0; i < MAX_CADENA_GENOMA; i++) {
+    // El cambio de progenitor se tira a cada átomo, así que los tramos salen de
+    // largo variable en vez de cortarse siempre por los mismos sitios.
+    if (siguienteEntero(rng, LARGO_DE_TRAMO) === 0) deA = !deA;
+    let atomo = genomas[(deA ? padreA : padreB) + i]!;
+    if (siguienteEntero(rng, 10000) < ERRATA_POR_DIEZ_MIL) {
       atomo = atomo + (siguienteEntero(rng, 2) === 0 ? -1 : 1);
       if (atomo < 0) atomo = 0;
       if (atomo >= N_TIPOS_ATOMO) atomo = N_TIPOS_ATOMO - 1;

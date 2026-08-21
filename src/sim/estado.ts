@@ -183,6 +183,16 @@ export interface EstadoMundo {
    * genomas, que se mide, no se declara.
    */
   criaturaLinaje: Int32Array;
+  /**
+   * Materia que el cuerpo tiene apartada en un gameto. Cero si no lleva ninguno.
+   *
+   * Es materia del mundo como cualquier otra: sale del cuerpo, se cuenta en el
+   * total y vuelve al suelo si el cuerpo se muere sin gastarla. Existe porque un
+   * gameto es algo que se **lleva encima** mientras uno anda por ahí, no un
+   * instante: sin esto, dos cuerpos no llegan a coincidir nunca fértiles a la vez
+   * y el sexo no ocurre — medido, 18 cruces de 19.519 nacimientos.
+   */
+  criaturaGameto: Int32Array;
   /** Genoma de cada criatura: MAX_CADENA_GENOMA átomos seguidos por criatura. */
   criaturaGenoma: Uint8Array;
 
@@ -213,6 +223,8 @@ export interface EstadoMundo {
   /** Cuentas del último tick, para la telemetría y la pantalla. */
   criaturasVivas: number;
   nacimientosEsteTick: number;
+  /** De esos nacimientos, cuántos salieron de juntar gametos de dos cuerpos. */
+  cruzamientosEsteTick: number;
   muertesEsteTick: number;
   senalesEsteTick: number;
   edadMediaDeMuerte: number;
@@ -306,8 +318,20 @@ export function reconstruirIndiceDeCeldas(estado: EstadoMundo): void {
 const CAMPOS_POR_CELDA = 5;
 /** Bytes por planta: celda, masa, edad y fruto en enteros, más sus genes. */
 const BYTES_POR_PLANTA = 16 + GENES_PLANTA;
-/** Bytes por criatura: seis campos de cuatro bytes más su genoma. */
-const BYTES_POR_CRIATURA = 24 + MAX_CADENA_GENOMA;
+/**
+ * Campos de cuatro bytes que guarda cada criatura, sin contar el genoma: celda,
+ * materia, energía, daño, edad, linaje y gameto.
+ *
+ * Va como constante y no como número suelto porque el número suelto ya se cobró
+ * una pieza: el paso entre criaturas estaba escrito a mano como `c * 24` en dos
+ * sitios, y al añadir el gameto como séptimo campo cada criatura escribía su
+ * gameto encima de la celda de la siguiente. El mundo se guardaba mal y cargarlo
+ * daba otro futuro. Lo cazó el test de determinismo, no la vista.
+ */
+const CAMPOS_POR_CRIATURA = 7;
+const BYTES_CAMPOS_CRIATURA = CAMPOS_POR_CRIATURA * 4;
+/** Bytes por criatura: sus campos más su genoma. */
+const BYTES_POR_CRIATURA = BYTES_CAMPOS_CRIATURA + MAX_CADENA_GENOMA;
 /** Bytes por celda de las cosas de los cuerpos: carroña y constancia del ciclo. */
 const BYTES_CUERPOS_POR_CELDA = 8;
 /** Bytes por celda de la sopa: átomos sueltos más las moléculas con su cantidad. */
@@ -376,6 +400,7 @@ export function crearEstado(
     criaturaEdad: new Int32Array(MAX_CRIATURAS),
     criaturaTemperatura: new Float32Array(MAX_CRIATURAS),
     criaturaLinaje: new Int32Array(MAX_CRIATURAS),
+    criaturaGameto: new Int32Array(MAX_CRIATURAS),
     criaturaGenoma: new Uint8Array(MAX_CRIATURAS * MAX_CADENA_GENOMA),
     cabezaEnCelda: cabezaVacia(geo.nCeldas),
     siguienteEnCelda: listaVacia(),
@@ -385,6 +410,7 @@ export function crearEstado(
     constanciaDelCiclo: new Int32Array(geo.nCeldas),
     criaturasVivas: 0,
     nacimientosEsteTick: 0,
+    cruzamientosEsteTick: 0,
     muertesEsteTick: 0,
     senalesEsteTick: 0,
     edadMediaDeMuerte: 0,
@@ -487,15 +513,16 @@ export function serializar(estado: EstadoMundo): Uint8Array {
 
   const cuerpos = moleculas + n * TOP_N_MOLECULAS * 8;
   for (let c = 0; c < MAX_CRIATURAS; c++) {
-    const p = cuerpos + c * 24;
+    const p = cuerpos + c * BYTES_CAMPOS_CRIATURA;
     vista.setInt32(p, estado.criaturaCelda[c]!, true);
     vista.setInt32(p + 4, estado.criaturaMateria[c]!, true);
     vista.setFloat32(p + 8, estado.criaturaEnergia[c]!, true);
     vista.setFloat32(p + 12, estado.criaturaDano[c]!, true);
     vista.setInt32(p + 16, estado.criaturaEdad[c]!, true);
     vista.setInt32(p + 20, estado.criaturaLinaje[c]!, true);
+    vista.setInt32(p + 24, estado.criaturaGameto[c]!, true);
   }
-  const temperaturas = cuerpos + MAX_CRIATURAS * 24;
+  const temperaturas = cuerpos + MAX_CRIATURAS * BYTES_CAMPOS_CRIATURA;
   bytes.set(estado.criaturaGenoma, temperaturas);
   const celdasCuerpo = temperaturas + MAX_CRIATURAS * MAX_CADENA_GENOMA;
   for (let i = 0; i < n; i++) {
@@ -615,22 +642,24 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   const criaturaDano = new Float32Array(MAX_CRIATURAS);
   const criaturaEdad = new Int32Array(MAX_CRIATURAS);
   const criaturaLinaje = new Int32Array(MAX_CRIATURAS);
+  const criaturaGameto = new Int32Array(MAX_CRIATURAS);
   const criaturaTemperatura = new Float32Array(MAX_CRIATURAS);
   let criaturasContadas = 0;
   for (let c = 0; c < MAX_CRIATURAS; c++) {
-    const p = cuerposEn + c * 24;
+    const p = cuerposEn + c * BYTES_CAMPOS_CRIATURA;
     criaturaCelda[c] = vista.getInt32(p, true);
     criaturaMateria[c] = vista.getInt32(p + 4, true);
     criaturaEnergia[c] = vista.getFloat32(p + 8, true);
     criaturaDano[c] = vista.getFloat32(p + 12, true);
     criaturaEdad[c] = vista.getInt32(p + 16, true);
     criaturaLinaje[c] = vista.getInt32(p + 20, true);
+    criaturaGameto[c] = vista.getInt32(p + 24, true);
     if (criaturaCelda[c]! >= 0) {
       criaturasContadas++;
       criaturaTemperatura[c] = temperatura[criaturaCelda[c]!]!;
     }
   }
-  const genomaCriaturasEn = cuerposEn + MAX_CRIATURAS * 24;
+  const genomaCriaturasEn = cuerposEn + MAX_CRIATURAS * BYTES_CAMPOS_CRIATURA;
   const criaturaGenoma = bytes.slice(
     genomaCriaturasEn,
     genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA,
@@ -681,6 +710,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     criaturaEdad,
     criaturaTemperatura,
     criaturaLinaje,
+    criaturaGameto,
     criaturaGenoma,
     cabezaEnCelda: cabezaVacia(n),
     siguienteEnCelda: listaVacia(),
@@ -690,6 +720,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     constanciaDelCiclo,
     criaturasVivas: criaturasContadas,
     nacimientosEsteTick: 0,
+    cruzamientosEsteTick: 0,
     muertesEsteTick: 0,
     senalesEsteTick: 0,
     edadMediaDeMuerte: 0,

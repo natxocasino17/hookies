@@ -36,6 +36,7 @@ import {
   EFICACIA_MINIMA_DIETA,
   ENERGIA_AL_NACER,
   ENERGIA_DE_LA_CRIA,
+  ENERGIA_DEL_GAMETO,
   ENERGIA_PARA_CURARSE,
   ENERGIA_PARA_GEMAR,
   ENERGIA_POR_BOCADO,
@@ -47,7 +48,9 @@ import {
   MARGEN_TERMICO,
   MATERIA_AL_NACER,
   MATERIA_DE_LA_CRIA,
+  MATERIA_DEL_GAMETO,
   MATERIA_POR_MORDISCO,
+  MUESTRAS_DE_GAMETO,
   AGUANTE_MINIMO,
   MAX_CADENA_GENOMA,
   MAX_CRIATURAS,
@@ -55,6 +58,8 @@ import {
   METABOLISMO_BASE,
   MIRAR_EL_PUENTE_CADA,
   N_TIPOS_ATOMO,
+  PARECIDO_MINIMO_PARA_CRUZAR,
+  PARECIDO_SEGURO_PARA_CRUZAR,
   PROB_EMITIR,
   PROB_MORDER,
   PROB_MOVER,
@@ -79,6 +84,8 @@ import {
   copiarConErratas,
   genomaDesdeLaCadena,
   leerRasgo,
+  parecidoEntreGenomas,
+  recombinarConErratas,
   RASGO_DIETA_CARNE,
   RASGO_DIETA_VEGETAL,
   RASGO_EDAD_FERTIL,
@@ -163,8 +170,11 @@ function huecoLibre(estado: EstadoMundo): number {
 function morir(estado: EstadoMundo, c: number): void {
   const celda = estado.criaturaCelda[c]!;
   if (celda < 0) return;
-  estado.carrona[celda] = estado.carrona[celda]! + estado.criaturaMateria[c]!;
+  // El gameto que no llegó a gastarse es carne como el resto del cuerpo.
+  estado.carrona[celda] =
+    estado.carrona[celda]! + estado.criaturaMateria[c]! + estado.criaturaGameto[c]!;
   estado.criaturaMateria[c] = 0;
+  estado.criaturaGameto[c] = 0;
   salirDeLaCelda(estado, c, celda);
   estado.criaturaCelda[c] = -1;
   estado.muertesEsteTick++;
@@ -223,6 +233,7 @@ function mirarElPuente(estado: EstadoMundo, geo: Geometria): void {
     estado.criaturaCelda[hueco] = celda;
     entrarEnLaCelda(estado, hueco, celda);
     estado.criaturaMateria[hueco] = MATERIA_AL_NACER;
+    estado.criaturaGameto[hueco] = 0;
     estado.criaturaEnergia[hueco] = ENERGIA_AL_NACER;
     estado.criaturaDano[hueco] = 0;
     estado.criaturaEdad[hueco] = 0;
@@ -241,6 +252,7 @@ function mirarElPuente(estado: EstadoMundo, geo: Geometria): void {
 export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
   estado.nacimientosEsteTick = 0;
   estado.muertesEsteTick = 0;
+  estado.cruzamientosEsteTick = 0;
 
   if (estado.tick % MIRAR_EL_PUENTE_CADA === 0) mirarElPuente(estado, geo);
 
@@ -291,14 +303,27 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
       estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - cierra * ENERGIA_POR_CURARSE;
     }
 
-    // --- Gemación: si sobra energía, se desprende una cría -------------------
+    // --- Reproducción --------------------------------------------------------
+    //
+    // Dos caminos, y el barato es el que necesita a otro. Con un poco de materia
+    // de sobra el cuerpo aparta un gameto y lo lleva encima; si se cruza con
+    // alguien que también lleva uno y las cadenas se parecen, se funden. Para
+    // desprender una cría uno solo hace falta un excedente mucho mayor.
+    //
+    // Esa diferencia de precio no es un premio a juntarse: es que una cría hecha
+    // entre dos la pagan dos cuerpos. Que a un bicho le acabe rentando estar
+    // donde hay otros es justo la clase de cosa que tiene que salir sola.
+    fabricarGameto(estado, genomas, c);
+    if (estado.criaturaGameto[c]! > 0) juntarGametos(estado, geo, c, celda);
+
     const edadFertil =
       EDAD_REPRODUCTIVA *
       (FERTILIDAD_MINIMA + leerRasgo(genomas, base, RASGO_EDAD_FERTIL) * RANGO_DE_FERTILIDAD);
     if (
+      estado.criaturaGameto[c]! > 0 &&
       estado.criaturaEnergia[c]! > ENERGIA_PARA_GEMAR &&
       estado.criaturaEdad[c]! > edadFertil &&
-      estado.criaturaMateria[c]! > MATERIA_DE_LA_CRIA * 2
+      estado.criaturaMateria[c]! > MATERIA_DE_LA_CRIA + MATERIA_DEL_GAMETO
     ) {
       gemar(estado, geo, c, celda);
     }
@@ -432,6 +457,149 @@ function mordisqueaUnaPlanta(estado: EstadoMundo, celda: number, cuanto: number)
   return bocado;
 }
 
+/**
+ * Dos cuerpos que están en la misma celda juntan sus gametos.
+ *
+ * Esto NO es un sexto verbo y no es cortejar. Es lo que dice CLAUDE.md §1.2:
+ * aparearse es contacto más química. Nadie busca pareja, nadie la elige y nadie
+ * cobra nada por hacerlo — dos cuerpos que coinciden en una celda y que los dos
+ * tienen de sobra para pagar una cría sueltan gametos, y los gametos se funden
+ * o no según se parezcan sus cadenas. Un bicho solo en una celda no se cruza con
+ * nadie, y no porque esté "buscando": porque no hay nadie.
+ *
+ * Y aquí es donde nacen las especies. No hay campo "especie" en ninguna parte:
+ * hay un parecido que baja cuando dos poblaciones llevan mucho separadas, y una
+ * rampa de probabilidad que se cierra sola cuando ese parecido cae. El día que
+ * dos grupos ya no puedan cruzarse, nadie lo habrá decidido.
+ *
+ * Solo mira a las criaturas de ranura mayor que la suya, para que cada pareja se
+ * mire una vez por tick y no dos, y para en cuanto una fusión sale bien: un
+ * cuerpo paga una cría por tick como mucho, esté en una celda vacía o llena.
+ */
+function juntarGametos(
+  estado: EstadoMundo,
+  geo: Geometria,
+  c: number,
+  celda: number,
+): void {
+  const genomas = estado.criaturaGenoma;
+  const mio = c * MAX_CADENA_GENOMA;
+
+  for (let otro = estado.cabezaEnCelda[celda]!; otro >= 0; otro = estado.siguienteEnCelda[otro]!) {
+    if (otro <= c) continue;
+    if (estado.criaturaGameto[otro]! <= 0) continue;
+
+    const parecido = parecidoEntreGenomas(
+      genomas,
+      mio,
+      otro * MAX_CADENA_GENOMA,
+      MUESTRAS_DE_GAMETO,
+    );
+    if (parecido < PARECIDO_MINIMO_PARA_CRUZAR) continue;
+
+    // La rampa entre los dos umbrales es la fertilidad parcial de los híbridos.
+    if (parecido < PARECIDO_SEGURO_PARA_CRUZAR) {
+      const cuanto =
+        (parecido - PARECIDO_MINIMO_PARA_CRUZAR) /
+        (PARECIDO_SEGURO_PARA_CRUZAR - PARECIDO_MINIMO_PARA_CRUZAR);
+      if (siguienteDecimal(estado.rng) > cuanto) continue;
+    }
+
+    if (crearCriaDeDos(estado, geo, c, otro, celda)) return;
+  }
+}
+
+/**
+ * Un cuerpo con materia de sobra aparta un poco en un gameto y lo lleva encima.
+ *
+ * Esto es lo que hace que el sexo pueda llegar a ocurrir, y la primera versión
+ * no lo tenía. Antes bastaba con que dos cuerpos coincidieran fértiles en la
+ * misma celda, y eso no pasa nunca: un cuerpo que llega al umbral gema en ese
+ * mismo tick y vuelve a estar por debajo, así que dos no se solapan jamás.
+ * Medido: 18 cruces en 19.519 nacimientos, o sea nada.
+ *
+ * Con el gameto guardado, un cuerpo anda por el mundo llevándolo puesto hasta
+ * que se encuentra a alguien. Y apartarlo es barato comparado con costear una
+ * cría entera, así que la mayoría lleva uno.
+ *
+ * No hay ninguna decisión aquí: si sobra materia, se aparta. Igual que se
+ * excreta cuando sobra.
+ */
+function fabricarGameto(estado: EstadoMundo, genomas: Uint8Array, c: number): void {
+  if (estado.criaturaGameto[c]! > 0) return;
+  const base = c * MAX_CADENA_GENOMA;
+  const edadFertil =
+    EDAD_REPRODUCTIVA *
+    (FERTILIDAD_MINIMA + leerRasgo(genomas, base, RASGO_EDAD_FERTIL) * RANGO_DE_FERTILIDAD);
+  if (estado.criaturaEdad[c]! <= edadFertil) return;
+  if (estado.criaturaMateria[c]! <= MATERIA_DE_LA_CRIA + MATERIA_DEL_GAMETO) return;
+  if (estado.criaturaEnergia[c]! <= ENERGIA_DEL_GAMETO) return;
+
+  estado.criaturaMateria[c] = estado.criaturaMateria[c]! - MATERIA_DEL_GAMETO;
+  estado.criaturaGameto[c] = MATERIA_DEL_GAMETO;
+  estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - ENERGIA_DEL_GAMETO;
+}
+
+/**
+ * La cría de dos, con el genoma recombinado y la factura partida.
+ *
+ * Cada progenitor pone la mitad de la materia y de la energía. Eso hace que
+ * tener una cría con alguien salga a mitad de precio que hacerla uno solo, y no
+ * es un premio a aparearse: es que el coste se reparte entre dos cuerpos en vez
+ * de salir de uno. La consecuencia —que a un bicho le rente estar donde hay
+ * otros— es justo la clase de cosa que el proyecto quiere que aparezca sola
+ * (CLAUDE.md §0), no una regla que empuje a juntarse.
+ */
+function crearCriaDeDos(
+  estado: EstadoMundo,
+  geo: Geometria,
+  a: number,
+  b: number,
+  celda: number,
+): boolean {
+  const hueco = huecoLibre(estado);
+  if (hueco < 0) {
+    estado.topeDePoblacionTocado = true;
+    return false;
+  }
+
+  recombinarConErratas(
+    estado.criaturaGenoma,
+    a * MAX_CADENA_GENOMA,
+    b * MAX_CADENA_GENOMA,
+    hueco * MAX_CADENA_GENOMA,
+    estado.rng,
+  );
+
+  // La cría se hace con los dos gametos y nada más. La materia ya estaba
+  // apartada, así que aquí solo cambia de sitio: sale de los dos gametos y entra
+  // en el cuerpo nuevo, sin redondeos que puedan perder un átomo.
+  const materiaDeLaCria = estado.criaturaGameto[a]! + estado.criaturaGameto[b]!;
+  estado.criaturaGameto[a] = 0;
+  estado.criaturaGameto[b] = 0;
+  estado.criaturaEnergia[a] = estado.criaturaEnergia[a]! - ENERGIA_DE_LA_CRIA / 2;
+  estado.criaturaEnergia[b] = estado.criaturaEnergia[b]! - ENERGIA_DE_LA_CRIA / 2;
+
+  const k = siguienteEntero(estado.rng, geo.nVecinos[celda]! + 1);
+  const destino = k === geo.nVecinos[celda]! ? celda : geo.vecinos[celda * MAX_VECINOS + k]!;
+
+  estado.criaturaCelda[hueco] = destino;
+  entrarEnLaCelda(estado, hueco, destino);
+  estado.criaturaMateria[hueco] = materiaDeLaCria;
+  estado.criaturaGameto[hueco] = 0;
+  estado.criaturaEnergia[hueco] = ENERGIA_DE_LA_CRIA;
+  estado.criaturaDano[hueco] = 0;
+  estado.criaturaEdad[hueco] = 0;
+  estado.criaturaTemperatura[hueco] = estado.criaturaTemperatura[a]!;
+  // El linaje se hereda del primero. Con sexo, ese número dice cada vez menos:
+  // sirve para contar de dónde viene la rama, no para saber quién es pariente de
+  // quién. Para eso está el parecido entre genomas, que es lo que se mide.
+  estado.criaturaLinaje[hueco] = estado.criaturaLinaje[a]!;
+  estado.nacimientosEsteTick++;
+  estado.cruzamientosEsteTick++;
+  return true;
+}
+
 /** Desprende una cría con el genoma de la madre y sus erratas. */
 function gemar(estado: EstadoMundo, geo: Geometria, madre: number, celda: number): void {
   const hueco = huecoLibre(estado);
@@ -447,8 +615,17 @@ function gemar(estado: EstadoMundo, geo: Geometria, madre: number, celda: number
     estado.rng,
   );
 
-  // La cría se construye con materia y energía de la madre. Nada de la nada.
-  estado.criaturaMateria[madre] = estado.criaturaMateria[madre]! - MATERIA_DE_LA_CRIA;
+  // La cría se hace con el gameto que ya llevaba puesto más otro tanto sacado
+  // del cuerpo. O sea: hacerla sola cuesta las dos mitades, y hacerla con
+  // alguien cuesta una. Esa es toda la diferencia entre los dos caminos.
+  //
+  // Que la gemación gaste el gameto importa más de lo que parece: la primera
+  // versión no lo hacía, así que un cuerpo apartaba materia que ya no podía usar
+  // para nada si no aparecía pareja, y el gameto era **peso muerto**. Con eso el
+  // mundo se extinguía — de 875 criaturas vivas a cero.
+  const materiaDeLaCria = estado.criaturaGameto[madre]! + MATERIA_DEL_GAMETO;
+  estado.criaturaGameto[madre] = 0;
+  estado.criaturaMateria[madre] = estado.criaturaMateria[madre]! - MATERIA_DEL_GAMETO;
   estado.criaturaEnergia[madre] = estado.criaturaEnergia[madre]! - ENERGIA_DE_LA_CRIA;
 
   // Cae en una celda vecina o en la misma. Sin buscar buen sitio: donde caiga.
@@ -457,7 +634,8 @@ function gemar(estado: EstadoMundo, geo: Geometria, madre: number, celda: number
 
   estado.criaturaCelda[hueco] = destino;
   entrarEnLaCelda(estado, hueco, destino);
-  estado.criaturaMateria[hueco] = MATERIA_DE_LA_CRIA;
+  estado.criaturaMateria[hueco] = materiaDeLaCria;
+  estado.criaturaGameto[hueco] = 0;
   estado.criaturaEnergia[hueco] = ENERGIA_DE_LA_CRIA;
   estado.criaturaDano[hueco] = 0;
   estado.criaturaEdad[hueco] = 0;
@@ -483,7 +661,7 @@ export function materiaEnCriaturas(estado: EstadoMundo): number {
   let total = 0;
   for (let c = 0; c < MAX_CRIATURAS; c++) {
     if (estado.criaturaCelda[c]! < 0) continue;
-    total += estado.criaturaMateria[c]!;
+    total += estado.criaturaMateria[c]! + estado.criaturaGameto[c]!;
   }
   for (let i = 0; i < estado.carrona.length; i++) total += estado.carrona[i]!;
   return total;
