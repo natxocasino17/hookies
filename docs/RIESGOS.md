@@ -367,6 +367,26 @@ hacer algo?*
 
 ---
 
+## 15. El canal está construido pero todavía no lleva nada
+
+Cerrada la fase 3, el aire y el suelo existen: emitir suma cuatro números a la
+celda, se reparten a las vecinas y se apagan; rascar deja otros cuatro que duran
+cientos de veces más. Los sentidos leen los ocho.
+
+Lo que **no** hay todavía es nadie que elija qué emitir: en la fase 3 los cuatro
+números salen del azar, así que el canal lleva ruido puro. Eso está bien y es a
+propósito — es la línea base contra la que se medirá la fase 4.
+
+El riesgo que queda vivo es el de siempre y no se ha movido: que con cerebros el
+canal **siga** llevando ruido. Si pasa, la respuesta está en la tabla del §4 de
+CLAUDE.md y no se negocia: se sube el valor de la información — depredadores más
+letales, comida enterrada más rica, vida solitaria más dura — y **nunca** se
+premia el acto de emitir.
+
+Lo que sí se puede decir ya, y es nuevo, es que el problema ha dejado de ser
+físico. Antes emitir no dejaba rastro en ninguna parte y ninguna cantidad de
+cerebro lo habría arreglado.
+
 ## 14. El archivo guardado crece con el tope de población, no con lo que vive
 
 Descubierto al medir, en la fase 3. El genoma son 8.192 bytes por criatura y

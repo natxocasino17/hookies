@@ -216,7 +216,7 @@ difusión.
 
 ---
 
-## Fase 3 — Cuerpos y reproducción
+## Fase 3 — Cuerpos y reproducción ✅ TERMINADA
 
 **Se construye**
 
@@ -258,7 +258,7 @@ difusión.
    (compatibilidad de gametos cae por debajo del umbral), detectado por la
    telemetría, no declarado.
 
-### Cómo va (sesión del 20 de agosto) — NO terminada
+### Cómo se cerró
 
 Lo que ya está de pie: el puente, los cuerpos viviendo y muriendo, la gemación,
 y la masa y el determinismo aguantando con cuerpos dentro. Lo que falta para
@@ -306,6 +306,53 @@ Lo que dice esa tabla, en orden de importancia:
 - **Quedan uno o dos linajes vivos de los 52–58 fundados.** El criterio 1 de la
   fase se cumple —unos aguantan y otros no— pero acaba en casi monocultivo, y eso
   hay que mirarlo cuando lleguen la especiación y el sexo.
+
+### Los cuatro criterios, uno por uno
+
+**1. Hay linajes que persisten y otros que se extinguen, y se reporta la
+distribución.** ✅ Medido en dos semillas a 16.000 ticks (tabla más abajo): entre
+83 y 131 linajes fundados, casi todos extinguidos, 3 y 5 vivos al final. Mediana
+de duración por debajo de 120 ticks y una cola que llega a 10.007. Los que
+siguen vivos llevan más de cincuenta generaciones. Nadie decidió cuál prende.
+
+**2. Ni explosión hasta el tope ni extinción total en la mayoría de las
+semillas.** ✅ El tope de población **no se toca en ninguna semilla** — y eso
+costó trabajo, porque antes sí mandaba. De cuatro semillas, tres sostienen
+población a los 8.000 ticks (322, 726 y 1.114) y la 42 se extingue. Que un mundo
+se muera es un resultado legítimo y se deja así.
+
+**3. Masa conservada con cuerpos, crías, cadáveres y objetos.** ✅ con una
+salvedad honesta: **objetos no hay**, siguen aplazados (decisión D11). De lo que
+existe —cuerpos, gametos, crías, carroña— la masa cuadra al entero en las cuatro
+semillas y tras 10.000 ticks, y el gameto obligó a contar una cosa más: materia
+que un cuerpo lleva apartada y que vuelve al suelo si se muere sin gastarla.
+
+**4. Al menos una semilla donde dos poblaciones no pueden cruzarse, detectado por
+la telemetría.** ✅ En las semillas 7 y 1234 llegan a convivir **tres grupos
+incompatibles a la vez**, con parecidos mínimos de 0,000 y 0,008 cuando para
+cruzarse hace falta 0,75. Lo dice el censo de especies, que agrupa con el mismo
+umbral que usa la física y que se puede borrar entero sin que el mundo cambie.
+
+Y el matiz que no se guarda: esos grupos son linajes de puentes distintos, con
+genomas que nunca tuvieron nada que ver. **Especiación por divergencia no se ha
+visto**, y la cuenta dice que harían falta unas 130 generaciones aisladas. Queda
+apuntado para mirarlo en corridas largas, y no se va a tocar la tasa de mutación
+para forzarlo.
+
+### Lo que queda pendiente, dicho antes de pasar a la fase 4
+
+- **El gen de longevidad no lo puede ver la selección.** Nadie llega a viejo: la
+  longevidad mediana sale en 16.583 ticks y la edad mediana al morir en 328. Es
+  un mecanismo que parece estar y no está.
+- **El archivo guardado crece con el tope de población, no con lo que vive.**
+  24 MB con 500 criaturas dentro. Hay que arreglarlo antes de la fase 6
+  (`RIESGOS.md` §14).
+- **Objetos, bayas con color emergente, la crónica y el diario, y fundir plantas
+  y hongos en el mismo espacio de genomas** siguen aplazados a propósito
+  (decisiones D11, D12, D17, D19).
+- **Los sentidos no los lee nadie todavía.** Están construidos y medidos, y esa
+  es justamente la idea: llegar a la fase 4 pudiendo culpar al cerebro y solo al
+  cerebro.
 
 ### El sexo, y las especies que salieron de él
 
@@ -471,6 +518,13 @@ Dos detalles que parecen menores y no lo son:
   `tanh`, porque las funciones trascendentes de JavaScript no están
   especificadas bit a bit y meterían una diferencia entre navegadores **justo en
   la entrada del cerebro** (§2.1).
+
+**Lo que cuesta el canal.** Medido en un planeta de nivel 3 **sin una sola
+criatura viva**, para aislar el coste: la capa de cuerpos se lleva 2,28 ms de un
+tick de 39,09, o sea el **6 %**, y casi todo es repartir y apagar el aire. No es
+una regresión seria. Lo que domina el tick es la química, con el 80 % — que es
+justo lo que CLAUDE.md §2.4 manda recortar primero si algún día no se llega, con
+`LOTES_DE_QUIMICA` como palanca.
 
 **Lo que va a costar en la fase 4.** Medido con 1.605 criaturas vivas: sentir a
 todas cuesta **el 5,3 % de un tick** (9,10 ms de 171, las dos cifras tomadas en
