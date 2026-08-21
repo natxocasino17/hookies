@@ -39,6 +39,9 @@ function enviarInstantanea(): void {
       lluvia: i.lluvia,
       vegetacion: i.vegetacion,
       vegetacionTinte: i.vegetacionTinte,
+      criaturaCelda: i.criaturaCelda,
+      criaturaTamano: i.criaturaTamano,
+      criaturaTinte: i.criaturaTinte,
     },
     [
       i.altura.buffer,
@@ -49,6 +52,9 @@ function enviarInstantanea(): void {
       i.lluvia.buffer,
       i.vegetacion.buffer,
       i.vegetacionTinte.buffer,
+      i.criaturaCelda.buffer,
+      i.criaturaTamano.buffer,
+      i.criaturaTinte.buffer,
     ],
   );
   contar({ tipo: 'TELEMETRIA', ultima: mundo.telemetria.ultima });

@@ -74,6 +74,18 @@ worker.onmessage = (evento: MessageEvent<NoticiaDelWorker>) => {
       }
       escribir('rios', String(rios));
       escribir('bosque', `${vegetadas} celdas · ${masaVeg.toLocaleString('es')}`);
+      // Cuántos cuerpos hay vivos, y en cuántas celdas. Lo segundo dice si están
+      // repartidos o amontonados, que es lo que decide si llegan a encontrarse.
+      const ocupadas = new Set<number>();
+      for (let i = 0; i < noticia.criaturaCelda.length; i++) {
+        ocupadas.add(noticia.criaturaCelda[i]!);
+      }
+      escribir(
+        'bichos',
+        noticia.criaturaCelda.length === 0
+          ? 'todavía ninguno'
+          : `${noticia.criaturaCelda.length.toLocaleString('es')} en ${ocupadas.size} celdas`,
+      );
       document.body.classList.add('listo');
       break;
     }

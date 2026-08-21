@@ -380,6 +380,35 @@ generación, así que bajar de 0,98 a 0,75 pide unas 130 generaciones aisladas,
 que en este mundo son unos cuarenta mil ticks sin mezclarse. No se ha visto
 todavía. Y **no se va a subir la tasa de mutación para que salga antes**.
 
+### Ahora se les ve
+
+Hasta esta sesión el render dibujaba terreno, mar, nubes y vegetación, y **las
+criaturas no salían por ningún lado**. Un mundo con 800 bichos dentro que en
+pantalla parecía vacío. CLAUDE.md §0 dice que la capa de observación es la mitad
+del proyecto y que si no se puede ver lo que pasa, no pasa.
+
+Ahora se dibuja cada cuerpo, uno por uno y no un resumen por celda, porque lo
+que se quiere mirar es a los bichos. El panel dice cuántos hay vivos y en
+cuántas celdas — lo segundo importa más de lo que parece, porque dice si están
+repartidos o amontonados, y de eso depende que lleguen a encontrarse para
+cruzarse.
+
+**El color sale del genoma, y eso es lo mejor que tiene.** No hay tabla de
+especies ni la va a haber (§1.3): el tono es una proyección del genoma, un
+número que se saca de promediar una ventana de átomos, igual que el color de los
+frutos en la decisión D12. Nadie dentro del mundo lo lee, no entra en ninguna
+cuenta, y borrar esa función no cambiaría un solo tick.
+
+Lo que consigue es que **una especie nueva se vea**: dos cuerpos que pueden
+cruzarse tienen genomas parecidos, así que salen del mismo color solos, sin que
+nadie se lo diga. El día que un grupo se separe lo bastante como para no poder
+cruzarse con los demás, va a aparecer una mancha de otro color en la pantalla.
+La especiación se mira, no se consulta en un menú.
+
+Primer intento fallido, anotado: los hice de la mitad de tamaño que un árbol y
+con poca saturación, y no se distinguían de la vegetación. Un bicho que no se ve
+es un bicho que no existe.
+
 **La vida necesita mundo.** Medido de paso: en el planeta de nivel 3 (642 celdas,
 el que usan los tests centrales) los cuerpos no aguantan — picos de 3, 7, 4 y 53
 y extinción total antes de los 12.000 ticks. Menos celdas es menos comida y

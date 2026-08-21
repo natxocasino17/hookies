@@ -27,6 +27,7 @@ import { GEN_TEMPERATURA } from '../../src/sim/plantas.js';
 import { atomosTotales, censoDeMoleculas } from '../../src/sim/quimica.js';
 import { buscarCiclos } from '../../src/sim/autocatalisis.js';
 import { linajesVivos } from '../../src/sim/criaturas.js';
+import { censarEspecies } from '../../src/sim/especies.js';
 
 describe('el clima', () => {
   it('el agua del planeta no cambia jamás', () => {
@@ -291,18 +292,40 @@ describe('los cuerpos', () => {
     const geo = geometriaDe(estado);
     const materiaInicial = materiaTotal(estado);
     let nacimientos = 0;
+    let cruzamientos = 0;
     let muertes = 0;
     let pico = 0;
+    let masEspeciesALaVez = 0;
+    let parecidoMinimo = 1;
     for (let i = 0; i < TICKS; i++) {
       avanzarUnTick(estado, geo);
       nacimientos += estado.nacimientosEsteTick;
+      cruzamientos += estado.cruzamientosEsteTick;
       muertes += estado.muertesEsteTick;
       if (estado.criaturasVivas > pico) pico = estado.criaturasVivas;
+      // El censo de especies es caro (compara todas las muestras contra todas),
+      // así que se mira de tanto en tanto y solo cuando hay gente suficiente
+      // como para que el número quiera decir algo.
+      if (i % 400 === 0 && estado.criaturasVivas > 20) {
+        const censo = censarEspecies(estado);
+        if (censo.especies > masEspeciesALaVez) masEspeciesALaVez = censo.especies;
+        if (censo.parecidoMinimo < parecidoMinimo) parecidoMinimo = censo.parecidoMinimo;
+      }
     }
     // Cada condensación del puente funda un linaje nuevo, así que los linajes
     // fundados son exactamente los nacimientos que NO son crías de nadie.
     const porElPuente = estado.siguienteLinaje - 1;
-    return { estado, materiaInicial, nacimientos, muertes, pico, porElPuente };
+    return {
+      estado,
+      materiaInicial,
+      nacimientos,
+      cruzamientos,
+      muertes,
+      pico,
+      porElPuente,
+      masEspeciesALaVez,
+      parecidoMinimo,
+    };
   }
 
   function mundo(semilla: number) {
@@ -370,7 +393,41 @@ describe('los cuerpos', () => {
     expect(vivos, 'linajes vivos al final').toBeLessThan(r.porElPuente);
   });
 
-  it('la masa se conserva con cuerpos, crías y carroña dentro', () => {
+  it('hay crías que salen de dos cuerpos, no solo de uno', () => {
+    // El sexo no es un adorno: tiene que llegar a ocurrir de verdad. La primera
+    // versión que escribí daba 18 cruces en 19.519 nacimientos, o sea nada, y
+    // parecía funcionar mirando el código.
+    //
+    // Cuánto pesa depende muchísimo del mundo, y eso es un resultado, no ruido:
+    // medido a 8.000 ticks, en la semilla 1 son el 16 % de las crías y en la
+    // 1234 el 76 %. La diferencia es la densidad — hacen falta dos cuerpos en la
+    // misma celda, y en un mundo vacío eso no pasa casi nunca. Por eso aquí solo
+    // se exige que ocurra, y que en algún mundo sea el camino principal.
+    const conCruces = SEMILLAS.filter((s) => mundo(s).cruzamientos > 0).length;
+    expect(conCruces, 'mundos donde el sexo llega a ocurrir').toBeGreaterThanOrEqual(2);
+
+    const fracciones = SEMILLAS.map((s) => {
+      const r = mundo(s);
+      return r.cruzamientos / Math.max(1, r.nacimientos);
+    });
+    expect(Math.max(...fracciones), 'en el mundo más poblado el sexo manda').toBeGreaterThan(0.5);
+  });
+
+  it('llega a haber dos grupos que no pueden cruzarse entre sí', () => {
+    // Criterio 4 de la fase 3, y lo dice el censo, no yo. En la semilla 1234
+    // conviven dos grupos entre los ticks 4.000 y 8.000 con un parecido mínimo
+    // de 0,297 cuando para cruzarse hace falta 0,75.
+    //
+    // El matiz honesto, que está medido y no se esconde: esos dos grupos son
+    // linajes que vienen de puentes distintos, con genomas que nunca tuvieron
+    // nada que ver. NO es un linaje que se haya partido en dos. Especiación por
+    // divergencia todavía no se ha visto, y la cuenta dice que harían falta unas
+    // 130 generaciones aisladas.
+    const maximo = Math.max(...SEMILLAS.map((s) => mundo(s).masEspeciesALaVez));
+    expect(maximo, 'grupos incompatibles conviviendo a la vez').toBeGreaterThan(1);
+  });
+
+  it('la masa se conserva con cuerpos, crías, gametos y carroña dentro', () => {
     for (const semilla of SEMILLAS) {
       const r = mundo(semilla);
       expect(r.nacimientos, `nacimientos, semilla ${semilla}`).toBeGreaterThan(0);

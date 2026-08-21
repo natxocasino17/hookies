@@ -7,7 +7,14 @@
  * laboratorio sea lo mismo que después se ve en pantalla.
  */
 
-import { GENES_PLANTA, MAX_PLANTAS, PRESUPUESTO_MS_POR_TICK } from './constants.js';
+import {
+  GENES_PLANTA,
+  MAX_CADENA_GENOMA,
+  MAX_CRIATURAS,
+  MAX_PLANTAS,
+  PRESUPUESTO_MS_POR_TICK,
+} from './constants.js';
+import { leerRasgo, RASGO_TAMANO, tinteDelGenoma } from './genoma.js';
 import { GEN_TEMPERATURA } from './plantas.js';
 import {
   crearEstado,
@@ -40,6 +47,17 @@ export interface Instantanea {
    * ven de tonos distintos, así que la divergencia se ve con los ojos.
    */
   vegetacionTinte: Uint8Array;
+  /**
+   * Los cuerpos vivos, uno por uno: en qué celda está cada uno, cómo de grande
+   * es (0 a 255) y su color (0 a 255).
+   *
+   * Uno por uno y no un resumen por celda, al revés que la vegetación, porque lo
+   * que se quiere ver aquí es a los bichos moverse. El color sale de proyectar
+   * el genoma: no hay tabla de especies (ver `tinteDelGenoma`).
+   */
+  criaturaCelda: Int32Array;
+  criaturaTamano: Uint8Array;
+  criaturaTinte: Uint8Array;
 }
 
 /**
@@ -133,7 +151,43 @@ export class Mundo {
       flujoAgua: new Int32Array(this.estado.flujoAgua),
       lluvia: new Int32Array(this.estado.lluvia),
       ...this.resumirVegetacion(),
+      ...this.recogerCriaturas(),
     };
+  }
+
+  /**
+   * Los cuerpos vivos, listos para dibujar: dónde está cada uno, cómo de grande
+   * es y de qué color.
+   *
+   * El color **sale del propio genoma**, igual que el de los frutos (decisión
+   * D12). No hay ninguna tabla de especies ni nada que se le parezca: se
+   * promedia una ventana de átomos y ese número es el tono. La consecuencia es
+   * lo que se quería — dos bichos que pueden cruzarse tienen genomas parecidos,
+   * así que salen del mismo color sin que nadie se lo diga, y el día que un
+   * grupo se separe lo suficiente como para no poder cruzarse, **se le va a ver
+   * cambiar de color**. La especiación se mira, no se consulta.
+   */
+  private recogerCriaturas(): {
+    criaturaCelda: Int32Array;
+    criaturaTamano: Uint8Array;
+    criaturaTinte: Uint8Array;
+  } {
+    const vivas: number[] = [];
+    for (let c = 0; c < MAX_CRIATURAS; c++) {
+      if (this.estado.criaturaCelda[c]! >= 0) vivas.push(c);
+    }
+    const celda = new Int32Array(vivas.length);
+    const tamano = new Uint8Array(vivas.length);
+    const tinte = new Uint8Array(vivas.length);
+    const g = this.estado.criaturaGenoma;
+    for (let i = 0; i < vivas.length; i++) {
+      const c = vivas[i]!;
+      const base = c * MAX_CADENA_GENOMA;
+      celda[i] = this.estado.criaturaCelda[c]!;
+      tamano[i] = (leerRasgo(g, base, RASGO_TAMANO) * 255) | 0;
+      tinte[i] = (tinteDelGenoma(g, base) * 255) | 0;
+    }
+    return { criaturaCelda: celda, criaturaTamano: tamano, criaturaTinte: tinte };
   }
 
   /**

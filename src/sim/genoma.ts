@@ -24,6 +24,7 @@ import {
   MAX_CADENA_GENOMA,
   N_TIPOS_ATOMO,
   VENTANA_DE_RASGO,
+  VENTANA_DE_TINTE,
 } from './constants.js';
 import { siguienteEntero } from './rng.js';
 import type { EstadoRng } from './rng.js';
@@ -63,6 +64,33 @@ export function leerRasgo(genoma: Uint8Array, base: number, rasgo: number): numb
   let suma = 0;
   for (let i = 0; i < VENTANA_DE_RASGO; i++) suma += genoma[desde + i]!;
   return suma / (VENTANA_DE_RASGO * (N_TIPOS_ATOMO - 1));
+}
+
+/**
+ * Un número entre 0 y 1 para pintar el cuerpo. **No es un rasgo.**
+ *
+ * Cuesta explicarlo y merece la pena: aquí no hay ningún "gen del color", y no
+ * lo va a haber, porque el color no es ninguna fuerza del mundo y un gen que no
+ * empuja nada no pinta nada en la física. Esto es lo que la decisión D12 dice
+ * del color de los frutos: **una proyección del genoma**, un número que se saca
+ * de mirarlo, igual que se podría sacar la suma o la longitud.
+ *
+ * Se lee de la zona que no ocupan los rasgos, o sea de la parte que algún día
+ * será cerebro. Da igual de dónde se lea, porque nadie lo consulta para decidir
+ * nada: no lo lee ninguna criatura, no entra en ninguna cuenta y borrar esta
+ * función no cambiaría un solo tick del mundo.
+ *
+ * Lo que sí hace es dejar ver una cosa que si no habría que ir a buscar a un
+ * menú: dos cuerpos que pueden cruzarse tienen genomas parecidos, así que salen
+ * del mismo color **solos**. El día que un grupo se separe lo bastante como para
+ * no poder cruzarse con los demás, se le va a ver cambiar de color en la
+ * pantalla. La especiación se mira.
+ */
+export function tinteDelGenoma(genoma: Uint8Array, base: number): number {
+  const desde = base + ATOMOS_DE_RASGOS;
+  let suma = 0;
+  for (let i = 0; i < VENTANA_DE_TINTE; i++) suma += genoma[desde + i]!;
+  return suma / (VENTANA_DE_TINTE * (N_TIPOS_ATOMO - 1));
 }
 
 /**

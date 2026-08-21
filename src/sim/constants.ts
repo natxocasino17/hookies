@@ -812,6 +812,16 @@ export const ENERGIA_AL_NACER = 120;
  */
 export const VENTANA_DE_RASGO = 24;
 
+/**
+ * Átomos que se promedian para sacar el color con el que se pinta un cuerpo.
+ *
+ * Ojo: **no es un rasgo**, es una proyección del genoma para el ojo, y no la
+ * lee nadie dentro del mundo. Ancha por lo mismo que las ventanas de rasgo: para
+ * que el color de un linaje no dé saltos con cada errata, y para que cambiar de
+ * color quiera decir de verdad que el genoma se ha ido lejos.
+ */
+export const VENTANA_DE_TINTE = 64;
+
 /** Probabilidad, entre diez mil, de que un átomo del genoma se copie mal. */
 export const ERRATA_POR_DIEZ_MIL = 9;
 

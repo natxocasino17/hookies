@@ -14,7 +14,13 @@
  */
 
 import * as THREE from 'three';
-import { MAX_VECINOS, NIVEL_DEL_MAR, RADIO_PLANETA, TEMP_CONGELACION } from '../sim/constants.js';
+import {
+  MAX_CRIATURAS,
+  MAX_VECINOS,
+  NIVEL_DEL_MAR,
+  RADIO_PLANETA,
+  TEMP_CONGELACION,
+} from '../sim/constants.js';
 import { construirGeometria, type Geometria } from '../sim/geodesica.js';
 import { radioDeCelda, radioDelMar } from '../sim/terreno.js';
 import { direccionDelSol } from '../sim/clima.js';
@@ -113,6 +119,7 @@ export class VistaPlaneta {
   private terreno: THREE.Mesh | null = null;
   private nubes: THREE.InstancedMesh | null = null;
   private arboles: THREE.InstancedMesh | null = null;
+  private bichos: THREE.InstancedMesh | null = null;
   private geo: Geometria | null = null;
   private nivelDibujado = -1;
 
@@ -153,6 +160,9 @@ export class VistaPlaneta {
     lluvia: Int32Array;
     vegetacion: Int32Array;
     vegetacionTinte: Uint8Array;
+    criaturaCelda: Int32Array;
+    criaturaTamano: Uint8Array;
+    criaturaTinte: Uint8Array;
   }): void {
     if (this.nivelDibujado !== inst.nivel) this.construirMundo(inst.nivel, inst.altura);
     if (!this.trozos || !this.geo || !this.nubes || !this.arboles) return;
@@ -260,6 +270,62 @@ export class VistaPlaneta {
     this.arboles!.instanceMatrix.needsUpdate = true;
     if (this.arboles!.instanceColor) this.arboles!.instanceColor.needsUpdate = true;
 
+    // --- Los cuerpos ----------------------------------------------------------
+    //
+    // Uno por bicho, no un resumen por celda: lo que se quiere ver aquí es a los
+    // bichos, y cuántos hay dónde.
+    //
+    // El color viene del genoma y no de ninguna tabla de especies. Eso hace algo
+    // que no se puede conseguir con un menú: dos que pueden cruzarse tienen
+    // genomas parecidos y salen del mismo color solos, así que **una especie
+    // nueva se ve como una mancha de otro color**, sin que nadie la anuncie.
+    let bichos = 0;
+    for (let i = 0; i < inst.criaturaCelda.length; i++) {
+      const celda = inst.criaturaCelda[i]!;
+      // Del tamaño de un árbol pequeño. Se probó con la mitad y no se distinguían
+      // de la vegetación, y un bicho que no se ve es un bicho que no existe
+      // (CLAUDE.md §0: la capa de observación es la mitad del proyecto).
+      const grande = 0.009 + (inst.criaturaTamano[i]! / 255) * 0.011;
+      const r = radioDeCelda(inst.altura[celda]!, RADIO_PLANETA) + grande * 1.6;
+
+      // Varios cuerpos pueden estar en la misma celda. Se separan un poco para
+      // que se vean los dos, con un desvío que depende del sitio que ocupan en
+      // la lista: siempre el mismo para el mismo mundo, nunca al azar.
+      const angulo = i * 2.399963;
+      const aparte = 0.012;
+      const arriba = new THREE.Vector3(
+        this.geo.centro[celda * 3]!,
+        this.geo.centro[celda * 3 + 1]!,
+        this.geo.centro[celda * 3 + 2]!,
+      );
+      const lado = new THREE.Vector3(0, 1, 0).cross(arriba);
+      if (lado.lengthSq() < 1e-6) lado.set(1, 0, 0);
+      lado.normalize();
+      const otroLado = arriba.clone().cross(lado).normalize();
+
+      sitio
+        .copy(arriba)
+        .multiplyScalar(r)
+        .addScaledVector(lado, Math.cos(angulo) * aparte)
+        .addScaledVector(otroLado, Math.sin(angulo) * aparte);
+
+      escala.set(grande, grande, grande);
+      matriz.compose(sitio, sinRotar, escala);
+      this.bichos!.setMatrixAt(bichos, matriz);
+
+      // Del genoma al color: una vuelta entera de tonos, para que dos genomas
+      // lejanos no puedan salir del mismo color por casualidad.
+      // Saturado y claro a propósito: tienen que despegarse del verde del monte
+      // y del azul del mar, o el color deja de contar nada.
+      tono.setHSL(inst.criaturaTinte[i]! / 255, 0.95, 0.62);
+      this.bichos!.setColorAt(bichos, tono);
+      bichos++;
+    }
+    matriz.compose(vacio, sinRotar, new THREE.Vector3(0, 0, 0));
+    for (let i = bichos; i < MAX_CRIATURAS; i++) this.bichos!.setMatrixAt(i, matriz);
+    this.bichos!.instanceMatrix.needsUpdate = true;
+    if (this.bichos!.instanceColor) this.bichos!.instanceColor.needsUpdate = true;
+
     // --- El sol, donde toca ---------------------------------------------------
     const d = direccionDelSol(inst.tick);
     this.sol.position.set(d[0] * 12, d[1] * 12, d[2] * 12);
@@ -308,6 +374,17 @@ export class VistaPlaneta {
     );
     this.arboles.frustumCulled = false;
     this.pivote.add(this.arboles);
+
+    if (this.bichos) this.pivote.remove(this.bichos);
+    // Los cuerpos. Un octaedro: se distingue de los conos de la vegetación de un
+    // vistazo, que es lo único que se le pide a la forma por ahora.
+    this.bichos = new THREE.InstancedMesh(
+      new THREE.OctahedronGeometry(1, 0),
+      new THREE.MeshLambertMaterial({ flatShading: true }),
+      MAX_CRIATURAS,
+    );
+    this.bichos.frustumCulled = false;
+    this.pivote.add(this.bichos);
 
     this.nivelDibujado = nivel;
   }
