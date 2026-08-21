@@ -380,6 +380,36 @@ generación, así que bajar de 0,98 a 0,75 pide unas 130 generaciones aisladas,
 que en este mundo son unos cuarenta mil ticks sin mezclarse. No se ha visto
 todavía. Y **no se va a subir la tasa de mutación para que salga antes**.
 
+### Cuánto dura un linaje (criterio 1, la parte que faltaba)
+
+El criterio 1 pide reportar la distribución, no solo decir que unos aguantan y
+otros no. Medido en la semilla 7 a 16.000 ticks: **83 linajes fundados, 78
+extinguidos y 5 todavía vivos al final**.
+
+De los 78 que se extinguieron:
+
+| | ticks |
+|---|---|
+| mínimo | 56 |
+| p25 | 79 |
+| mediana | 109 |
+| p75 | 231 |
+| p95 | 1.276 |
+| máximo | 2.544 |
+| media | 248 |
+
+El 42 % no pasó de 100 ticks. Uno solo aguantó más de 2.000.
+
+Lo que dice esa forma: **casi todos los linajes no arrancan**. Un cuerpo se
+condensa, no encuentra comida a tiempo o le toca una celda fría, y se acaba ahí.
+Y luego hay una cola larga — unos pocos que sí prenden y duran cientos o miles
+de ticks, y cinco que siguen vivos cuando se acaba la medición. Con generaciones
+de unos 300 ticks, esos cinco llevan más de cincuenta generaciones.
+
+Nadie ha diseñado cuál prende. La diferencia entre el que dura 56 ticks y el que
+lleva 16.000 es dónde le tocó caer y qué genoma le salió del ciclo que se
+condensó.
+
 ### El canal existía en el papel y no en el mundo
 
 Este es el agujero más grande que ha tenido el proyecto, y estuvo ahí desde el
