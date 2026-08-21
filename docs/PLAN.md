@@ -386,19 +386,24 @@ El criterio 1 pide reportar la distribución, no solo decir que unos aguantan y
 otros no. Medido en la semilla 7 a 16.000 ticks: **83 linajes fundados, 78
 extinguidos y 5 todavía vivos al final**.
 
-De los 78 que se extinguieron:
+En la 1234, con los mismos 16.000 ticks: **131 fundados, 128 extinguidos, 3
+vivos**. La distribución de los que se extinguieron, en ticks:
 
-| | ticks |
-|---|---|
-| mínimo | 56 |
-| p25 | 79 |
-| mediana | 109 |
-| p75 | 231 |
-| p95 | 1.276 |
-| máximo | 2.544 |
-| media | 248 |
+| | semilla 7 | semilla 1234 |
+|---|---|---|
+| mínimo | 56 | 29 |
+| p25 | 79 | 88 |
+| mediana | 109 | 118 |
+| p75 | 231 | 241 |
+| p95 | 1.276 | 1.162 |
+| **máximo** | 2.544 | **10.007** |
+| media | 248 | 418 |
+| no pasaron de 100 ticks | 42 % | 35 % |
+| aguantaron más de 2.000 | 1 | 5 |
 
-El 42 % no pasó de 100 ticks. Uno solo aguantó más de 2.000.
+Las dos semillas dan la misma forma, que es lo que hace pensar que es del mundo
+y no de la suerte: mediana por debajo de 120 ticks y una cola que se estira
+hasta diez mil.
 
 Lo que dice esa forma: **casi todos los linajes no arrancan**. Un cuerpo se
 condensa, no encuentra comida a tiempo o le toca una celda fría, y se acaba ahí.
