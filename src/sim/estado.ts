@@ -215,6 +215,32 @@ export interface EstadoMundo {
   /** Número que se le da al próximo linaje que se funde. */
   siguienteLinaje: number;
 
+  /**
+   * Lo que suena en el aire de cada celda: cuatro números, y nada más.
+   *
+   * **Ninguno de los cuatro significa nada.** No hay diccionario, no hay lista
+   * de palabras y no la va a haber (CLAUDE.md §1.3). Un bicho emite cuatro
+   * números, se suman a los de su celda, se reparten un poco a las de al lado y
+   * se apagan enseguida. Si algún día una nube de valores apareciera siempre en
+   * las mismas situaciones, **eso** sería una palabra, y la habrían hecho ellos.
+   *
+   * Hasta esta sesión emitir costaba energía y no dejaba rastro en ningún sitio,
+   * así que el canal no podía llevar nada aunque alguien hubiera querido decir
+   * algo. Esto es el aire donde cabe el sonido, y no es poca cosa: es lo que la
+   * visión del proyecto llama el corazón.
+   */
+  senalAire: Float32Array;
+
+  /**
+   * Lo que hay rascado en el suelo de cada celda: otros cuatro números.
+   *
+   * Lo mismo que la señal, pero durando. Una señal es un grito y esto es un
+   * monumento: sigue ahí cuando el que lo rascó se ha ido o se ha muerto. Es la
+   * única forma que existe en este mundo de dejar algo escrito, y nadie ha
+   * escrito qué quiere decir.
+   */
+  marcaSuelo: Float32Array;
+
   /** Materia de cuerpos muertos tirada en cada celda. Se pudre y vuelve al suelo. */
   carrona: Int32Array;
   /** Ticks seguidos que lleva cada celda con un ciclo autocatalítico fuerte. */
@@ -249,6 +275,15 @@ export interface EstadoMundo {
    * No se guardan en el archivo: son andamio de trabajo.
    */
   copiaEnteros: Int32Array;
+  /**
+   * Memoria de trabajo del reparto de la señal.
+   *
+   * Hace falta por lo mismo que la del viento: repartir tiene que leer el estado
+   * de ANTES. Si una celda leyera a un vecino que ya se actualizó este tick, la
+   * señal correría más deprisa en una dirección que en otra, y hacia dónde
+   * correría dependería del orden en que están numeradas las celdas.
+   */
+  copiaSenal: Float32Array;
   copiaDecimales: Float32Array;
 
   /** Contabilidad de energía: cuánta entró (sol) y cuánta salió (disipación). */
@@ -332,8 +367,11 @@ const CAMPOS_POR_CRIATURA = 7;
 const BYTES_CAMPOS_CRIATURA = CAMPOS_POR_CRIATURA * 4;
 /** Bytes por criatura: sus campos más su genoma. */
 const BYTES_POR_CRIATURA = BYTES_CAMPOS_CRIATURA + MAX_CADENA_GENOMA;
-/** Bytes por celda de las cosas de los cuerpos: carroña y constancia del ciclo. */
-const BYTES_CUERPOS_POR_CELDA = 8;
+/**
+ * Bytes por celda de las cosas de los cuerpos: carroña y constancia del ciclo en
+ * enteros, más los cuatro números de la señal y los cuatro de la marca.
+ */
+const BYTES_CUERPOS_POR_CELDA = 8 + 4 * 4 + 4 * 4;
 /** Bytes por celda de la sopa: átomos sueltos más las moléculas con su cantidad. */
 const BYTES_SOPA_POR_CELDA = N_TIPOS_ATOMO * 4 + N_DIMEROS * 4 + TOP_N_MOLECULAS * 8;
 
@@ -406,6 +444,8 @@ export function crearEstado(
     siguienteEnCelda: listaVacia(),
     cursorCriatura: 0,
     siguienteLinaje: 1,
+    senalAire: new Float32Array(geo.nCeldas * 4),
+    marcaSuelo: new Float32Array(geo.nCeldas * 4),
     carrona: new Int32Array(geo.nCeldas),
     constanciaDelCiclo: new Int32Array(geo.nCeldas),
     criaturasVivas: 0,
@@ -416,6 +456,7 @@ export function crearEstado(
     edadMediaDeMuerte: 0,
     topeDePoblacionTocado: false,
     copiaEnteros: new Int32Array(geo.nCeldas),
+    copiaSenal: new Float32Array(geo.nCeldas * 4),
     copiaDecimales: new Float32Array(geo.nCeldas),
     energiaEntrada: 0,
     energiaSalida: 0,
@@ -528,6 +569,14 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   for (let i = 0; i < n; i++) {
     vista.setInt32(celdasCuerpo + i * 4, estado.carrona[i]!, true);
     vista.setInt32(celdasCuerpo + n * 4 + i * 4, estado.constanciaDelCiclo[i]!, true);
+    for (let k = 0; k < 4; k++) {
+      vista.setFloat32(celdasCuerpo + n * 8 + (i * 4 + k) * 4, estado.senalAire[i * 4 + k]!, true);
+      vista.setFloat32(
+        celdasCuerpo + n * 8 + n * 16 + (i * 4 + k) * 4,
+        estado.marcaSuelo[i * 4 + k]!,
+        true,
+      );
+    }
   }
 
   return bytes;
@@ -667,9 +716,21 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
   const celdasCuerpoEn = genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA;
   const carrona = new Int32Array(n);
   const constanciaDelCiclo = new Int32Array(n);
+  const senalAire = new Float32Array(n * 4);
+  const marcaSuelo = new Float32Array(n * 4);
   for (let i = 0; i < n; i++) {
     carrona[i] = vista.getInt32(celdasCuerpoEn + i * 4, true);
     constanciaDelCiclo[i] = vista.getInt32(celdasCuerpoEn + n * 4 + i * 4, true);
+    for (let k = 0; k < 4; k++) {
+      senalAire[i * 4 + k] = vista.getFloat32(
+        celdasCuerpoEn + n * 8 + (i * 4 + k) * 4,
+        true,
+      );
+      marcaSuelo[i * 4 + k] = vista.getFloat32(
+        celdasCuerpoEn + n * 8 + n * 16 + (i * 4 + k) * 4,
+        true,
+      );
+    }
   }
 
   const estado: EstadoMundo = {
@@ -716,6 +777,8 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     siguienteEnCelda: listaVacia(),
     cursorCriatura: vista.getUint32(64, true),
     siguienteLinaje: vista.getUint32(68, true),
+    senalAire,
+    marcaSuelo,
     carrona,
     constanciaDelCiclo,
     criaturasVivas: criaturasContadas,
@@ -726,6 +789,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     edadMediaDeMuerte: 0,
     topeDePoblacionTocado: false,
     copiaEnteros: new Int32Array(n),
+    copiaSenal: new Float32Array(n * 4),
     copiaDecimales: new Float32Array(n),
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),

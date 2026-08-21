@@ -380,6 +380,69 @@ generación, así que bajar de 0,98 a 0,75 pide unas 130 generaciones aisladas,
 que en este mundo son unos cuarenta mil ticks sin mezclarse. No se ha visto
 todavía. Y **no se va a subir la tasa de mutación para que salga antes**.
 
+### El canal existía en el papel y no en el mundo
+
+Este es el agujero más grande que ha tenido el proyecto, y estuvo ahí desde el
+principio sin que se notara: **emitir una señal costaba energía y no dejaba
+rastro en ninguna parte**. Se restaba `COSTE_DE_EMITIR`, se sumaba uno a un
+contador de telemetría, y se acababa ahí. Rascar el suelo, igual: costaba y no
+escribía nada.
+
+O sea que el canal era **físicamente incapaz de llevar información**, y ninguna
+cantidad de cerebro en la fase 4 lo habría arreglado. La visión del proyecto
+dice que ponerle nombre a los peligros es el corazón de todo, y el corazón no
+estaba conectado.
+
+Ahora cada celda tiene dos campos de cuatro números:
+
+- **El aire** (`senalAire`). Un bicho que emite suma sus cuatro números a los de
+  su celda. Cada tick se reparte un poco a las vecinas y se apaga deprisa. Que
+  se reparta es lo único que hace que avisar sirva de algo: el que ve el peligro
+  y el que no lo ve están en celdas distintas, así que una señal que se quedara
+  quieta solo llegaría a quien ya está mirando lo mismo que tú.
+- **El suelo** (`marcaSuelo`). Lo que deja un rascado. Se apaga cientos de veces
+  más despacio, así que sigue estando cuando el que lo rascó se ha muerto. Es lo
+  único de este mundo que se parece a escribir.
+
+Ninguno de los ocho números significa nada, y no hay diccionario. En la fase 3
+los cuatro que emite un bicho salen del azar, porque no hay cerebro que los
+elija — y eso es exactamente la línea base contra la que se medirá en la fase 4
+si lo que emitan lleva información o sigue siendo ruido. Sin esa medida,
+"están hablando" sería una impresión.
+
+### Los sentidos, y por qué llegan antes que el cerebro
+
+Un vector de 24 números entre -1 y 1: cómo está uno por dentro (5), dónde está
+(3), hacia dónde huele a comida y cuánta hay (3), hacia dónde hay cuerpos y
+cuántos (3), con cuántos está pegado (2), lo que suena en su celda (4) y lo que
+hay rascado en ella (4). Ni uno solo es una decisión: no hay "hay comida al
+norte" ni "viene un peligro", hay cuánta materia comestible hay hacia cada lado.
+
+En la fase 3 **no los lee nadie**: los verbos siguen saliendo del azar. Se
+construyen ahora a propósito, y la razón es de método: si llegaran junto con el
+cerebro y las criaturas no espabilaran, no habría forma de saber si el fallo es
+del cerebro o es que los sentidos no llevan información. Separados se puede
+medir una cosa sin la otra — y se mide: hay un test que pone toda la comida en
+una celda vecina y comprueba que **la flecha del olfato apunta a esa y no a
+otra**, para las seis vecinas, una por una.
+
+Dos detalles que parecen menores y no lo son:
+
+- En una bola no hay norte que valga para todos, así que cada celda arma sus dos
+  direcciones a partir de dónde está, siempre igual. Sin eso, "hacia la derecha"
+  querría decir algo distinto cada vez que un bicho pasa por el mismo sitio, y
+  no habría nada que aprender.
+- La función que aplasta los números al rango -1..1 es `x / (1 + |x|)` y no
+  `tanh`, porque las funciones trascendentes de JavaScript no están
+  especificadas bit a bit y meterían una diferencia entre navegadores **justo en
+  la entrada del cerebro** (§2.1).
+
+**Lo que va a costar en la fase 4.** Medido con 1.605 criaturas vivas: sentir a
+todas cuesta **el 5,3 % de un tick** (9,10 ms de 171, las dos cifras tomadas en
+la misma corrida y en la misma máquina — el número absoluto no vale, la
+proporción sí). O sea que los sentidos son baratos y lo caro de la fase 4 va a
+ser el cerebro, no lo que le entra por delante.
+
 ### Ahora se les ve
 
 Hasta esta sesión el render dibujaba terreno, mar, nubes y vegetación, y **las

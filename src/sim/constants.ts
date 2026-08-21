@@ -956,6 +956,89 @@ export const MATERIA_DE_LA_CRIA = 45;
 /** Energía que se lleva la cría. */
 export const ENERGIA_DE_LA_CRIA = 90;
 
+// --- Las escalas de los sentidos -------------------------------------------
+//
+// Los sentidos salen entre -1 y 1, y estos números dicen qué cuenta como
+// "mucho" para cada cosa. No son perillas del mundo: no cambian ni un átomo de
+// lo que pasa, solo cómo de fino distingue un cuerpo entre poco y mucho. Aun así
+// van aquí, porque un número suelto dentro de la lógica es un parámetro
+// escondido aunque no empuje nada (§1.7).
+
+/** Comida en una celda vecina que ya se considera un olor fuerte. */
+export const ESCALA_DE_OLFATO = 100;
+
+/** Comida en todo el vecindario que ya se considera un sitio abundante. */
+export const ESCALA_DE_ABUNDANCIA = 400;
+
+/** Cuerpos alrededor que ya se consideran un montón. */
+export const ESCALA_DE_GENTIO = 4;
+
+/**
+ * Por debajo de esto, dos direcciones se consideran la misma y hace falta
+ * elegir otro eje para armar el marco local.
+ *
+ * Pasa justo en los polos del planeta, donde la vertical del sitio y el eje con
+ * el que se cruza apuntan a lo mismo. No es un caso especial del mundo: es que
+ * en un punto de una esfera hay que decidir de dónde se mide.
+ */
+export const EJES_DEMASIADO_JUNTOS = 1e-8;
+
+// --- El canal: señales en el aire y marcas en el suelo ----------------------
+//
+// Esto es el corazón del proyecto y hasta ahora no existía. Emitir una señal
+// costaba energía y **no dejaba rastro en ninguna parte**: el canal era
+// físicamente incapaz de llevar una sola cosa. Rascar el suelo igual.
+//
+// Lo que hay ahora son dos campos de cuatro números por celda. Ninguno de los
+// dos significa nada: son cuatro números. Si alguna vez una nube de valores se
+// repite en las mismas situaciones, eso sería una palabra, y la habrán hecho
+// ellos. Aquí solo está el aire donde cabe el sonido.
+//
+// La diferencia entre los dos es el tiempo que duran, y es toda la diferencia:
+// una señal es un grito y una marca es un monumento.
+
+/**
+ * Qué parte de la señal en el aire queda de un tick al siguiente, por mil.
+ *
+ * Baja: un grito dura poco. Si durara, el aire se llenaría de ruido viejo y
+ * nada de lo que se dijera se distinguiría de lo que se dijo hace un rato.
+ */
+export const PERMANENCIA_SENAL_POR_MIL = 620;
+
+/**
+ * Qué parte de la señal se reparte a las celdas vecinas, por mil.
+ *
+ * Que se reparta es lo que hace que el canal sirva para algo: el que vio el
+ * peligro y el que no lo ve están en celdas distintas. Si la señal se quedara
+ * quieta, avisar solo llegaría a quien ya está mirando lo mismo que tú.
+ */
+export const REPARTO_SENAL_POR_MIL = 180;
+
+/**
+ * Qué parte de la marca del suelo queda de un tick al siguiente, por mil.
+ *
+ * Alta: una marca dura. Ahí está la diferencia con la señal — algo rascado en
+ * el suelo sigue estando cuando el que lo rascó ya se ha ido o se ha muerto.
+ * Es la única forma que hay en este mundo de dejar algo escrito.
+ */
+export const PERMANENCIA_MARCA_POR_MIL = 997;
+
+/** Cuánto marca un rascado. La marca se suma a lo que ya hubiera en la celda. */
+export const FUERZA_DEL_RASCADO = 0.35;
+
+/** Cuánto suena una señal recién emitida. */
+export const FUERZA_DE_LA_SENAL = 1;
+
+/**
+ * Por debajo de esto, un campo se pone a cero en vez de arrastrar decimales
+ * cada vez más pequeños para siempre.
+ *
+ * No es un detalle de limpieza: sin esto, cada celda por la que pasó alguien
+ * hace mil ticks seguiría teniendo un número minúsculo distinto de cero, y el
+ * estado del mundo no volvería a repetirse nunca aunque no pasara nada.
+ */
+export const SILENCIO = 0.0005;
+
 // --- Sexo, y por tanto especies --------------------------------------------
 //
 // No hay un verbo "aparearse" y no lo va a haber (CLAUDE.md §1.2): esto es

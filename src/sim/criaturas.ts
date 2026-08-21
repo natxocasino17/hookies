@@ -42,6 +42,8 @@ import {
   ENERGIA_POR_BOCADO,
   ENERGIA_POR_CURARSE,
   EXCRECION_POR_TICK,
+  FUERZA_DE_LA_SENAL,
+  FUERZA_DEL_RASCADO,
   FERTILIDAD_MINIMA,
   INERCIA_TERMICA_DEL_CUERPO,
   LONGEVIDAD_MINIMA,
@@ -58,6 +60,8 @@ import {
   METABOLISMO_BASE,
   MIRAR_EL_PUENTE_CADA,
   N_TIPOS_ATOMO,
+  PERMANENCIA_MARCA_POR_MIL,
+  PERMANENCIA_SENAL_POR_MIL,
   PARECIDO_MINIMO_PARA_CRUZAR,
   PARECIDO_SEGURO_PARA_CRUZAR,
   PROB_EMITIR,
@@ -69,7 +73,9 @@ import {
   RANGO_DE_LONGEVIDAD,
   RANGO_DE_TAMANO,
   RANGO_TEMPERATURA_CUERPO,
+  REPARTO_SENAL_POR_MIL,
   RITMO_MINIMO,
+  SILENCIO,
   TAMANO_MINIMO,
   TEMPERATURA_PREFERIDA_MINIMA,
   TOP_N_MOLECULAS,
@@ -349,6 +355,7 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
   }
 
   pudrirLaCarrona(estado, geo);
+  apagarElAireYElSuelo(estado, geo);
 }
 
 /**
@@ -384,15 +391,32 @@ function ejecutarVerbosAlAzar(
     morder(estado, c, celda, base);
   }
 
-  // EMITIR SEÑAL — cuesta y no da nada. Nunca se premia emitir.
+  // EMITIR SEÑAL — cuesta y no da nada. **Nunca se premia emitir** (§1.5).
+  //
+  // Los cuatro números salen del azar porque en la fase 3 no hay cerebro que los
+  // elija. O sea que ahora mismo el canal lleva ruido puro, y eso está bien: es
+  // la línea base contra la que se va a medir si lo que emitan los cerebros de
+  // la fase 4 lleva información o sigue siendo ruido. Sin esta medida, "están
+  // hablando" sería una impresión.
   if (siguienteDecimal(estado.rng) < PROB_EMITIR) {
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_EMITIR;
+    for (let k = 0; k < 4; k++) {
+      const cuanto = (siguienteDecimal(estado.rng) * 2 - 1) * FUERZA_DE_LA_SENAL;
+      estado.senalAire[celda * 4 + k] = estado.senalAire[celda * 4 + k]! + cuanto;
+    }
     estado.senalesEsteTick++;
   }
 
-  // RASCAR EL SUELO — escribe en la marca de la celda. Nadie la interpreta.
+  // RASCAR EL SUELO — deja cuatro números en la celda. Nadie los interpreta.
+  //
+  // La diferencia con la señal es cuánto dura: esto sigue estando cuando el que
+  // lo rascó se ha muerto. Es lo único de este mundo que se parece a escribir.
   if (siguienteDecimal(estado.rng) < PROB_RASCAR) {
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_RASCAR;
+    for (let k = 0; k < 4; k++) {
+      const cuanto = (siguienteDecimal(estado.rng) * 2 - 1) * FUERZA_DEL_RASCADO;
+      estado.marcaSuelo[celda * 4 + k] = estado.marcaSuelo[celda * 4 + k]! + cuanto;
+    }
   }
 
   // AGARRAR / SOLTAR no hace nada todavía: no hay objetos sueltos (decisión
@@ -642,6 +666,52 @@ function gemar(estado: EstadoMundo, geo: Geometria, madre: number, celda: number
   estado.criaturaTemperatura[hueco] = estado.criaturaTemperatura[madre]!;
   estado.criaturaLinaje[hueco] = estado.criaturaLinaje[madre]!;
   estado.nacimientosEsteTick++;
+}
+
+/**
+ * El aire se calla y el suelo se borra, cada uno a su ritmo.
+ *
+ * Dos cosas pasan aquí y las dos importan:
+ *
+ * La señal **se reparte a las celdas de al lado**. Eso no es un detalle: es lo
+ * único que hace que avisar sirva para algo. El que ve el peligro y el que no lo
+ * ve están en celdas distintas, así que si la señal se quedara quieta, gritar
+ * solo llegaría a quien ya está mirando lo mismo que tú, y el canal no tendría
+ * para qué existir.
+ *
+ * Y las dos se apagan, pero a ritmos muy distintos: la señal en unos pocos ticks
+ * y la marca en cientos. De ahí sale sola la diferencia entre decir algo y
+ * dejarlo escrito, sin que ninguna de las dos esté declarada como tal.
+ *
+ * Por debajo de SILENCIO se ponen a cero. No es limpieza: si no, cada celda por
+ * la que pasó alguien hace mil ticks arrastraría un decimal minúsculo para
+ * siempre y el mundo no podría volver a estar quieto nunca.
+ */
+function apagarElAireYElSuelo(estado: EstadoMundo, geo: Geometria): void {
+  const antes = estado.copiaSenal;
+  antes.set(estado.senalAire);
+
+  for (let celda = 0; celda < geo.nCeldas; celda++) {
+    const vecinos = geo.nVecinos[celda]!;
+    for (let k = 0; k < 4; k++) {
+      const i = celda * 4 + k;
+
+      // Lo que llega de los vecinos, repartido en partes iguales entre ellos.
+      let deFuera = 0;
+      for (let v = 0; v < vecinos; v++) {
+        const j = geo.vecinos[celda * MAX_VECINOS + v]!;
+        deFuera += (antes[j * 4 + k]! * REPARTO_SENAL_POR_MIL) / 1000 / geo.nVecinos[j]!;
+      }
+      const queda = antes[i]! * (1 - REPARTO_SENAL_POR_MIL / 1000);
+      let valor = ((queda + deFuera) * PERMANENCIA_SENAL_POR_MIL) / 1000;
+      if (valor < SILENCIO && valor > -SILENCIO) valor = 0;
+      estado.senalAire[i] = valor;
+
+      let marca = (estado.marcaSuelo[i]! * PERMANENCIA_MARCA_POR_MIL) / 1000;
+      if (marca < SILENCIO && marca > -SILENCIO) marca = 0;
+      estado.marcaSuelo[i] = marca;
+    }
+  }
 }
 
 /** La carroña se pudre y su materia vuelve al suelo. */
