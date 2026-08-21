@@ -35,10 +35,13 @@ export type NoticiaDelWorker =
       lluvia: Int32Array;
       vegetacion: Int32Array;
       vegetacionTinte: Uint8Array;
+      vegetacionPorte: Uint8Array;
       /** Los cuerpos vivos: en qué celda está cada uno, su tamaño y su color. */
       criaturaCelda: Int32Array;
       criaturaTamano: Uint8Array;
       criaturaTinte: Uint8Array;
+      criaturaPunta: Uint8Array;
+      criaturaEsbeltez: Uint8Array;
     }
   | { tipo: 'TELEMETRIA'; ultima: Muestra | null }
   | { tipo: 'GUARDADO'; bytes: Uint8Array }

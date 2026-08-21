@@ -119,7 +119,14 @@ export class VistaPlaneta {
   private terreno: THREE.Mesh | null = null;
   private nubes: THREE.InstancedMesh | null = null;
   private arboles: THREE.InstancedMesh | null = null;
-  private bichos: THREE.InstancedMesh | null = null;
+  /**
+   * Los cuerpos, repartidos en varias mallas según lo picuda que sea su forma.
+   *
+   * Hacen falta varias y no una porque una malla instanciada dibuja miles de
+   * copias de **la misma** geometría. Cada bicho va a la que le toca por su gen
+   * de dieta, y dentro de ella se estira o se achata con su matriz.
+   */
+  private bichos: THREE.InstancedMesh[] = [];
   private geo: Geometria | null = null;
   private nivelDibujado = -1;
 
@@ -160,9 +167,12 @@ export class VistaPlaneta {
     lluvia: Int32Array;
     vegetacion: Int32Array;
     vegetacionTinte: Uint8Array;
+    vegetacionPorte: Uint8Array;
     criaturaCelda: Int32Array;
     criaturaTamano: Uint8Array;
     criaturaTinte: Uint8Array;
+    criaturaPunta: Uint8Array;
+    criaturaEsbeltez: Uint8Array;
   }): void {
     if (this.nivelDibujado !== inst.nivel) this.construirMundo(inst.nivel, inst.altura);
     if (!this.trozos || !this.geo || !this.nubes || !this.arboles) return;
@@ -255,7 +265,11 @@ export class VistaPlaneta {
         this.geo.centro[celda * 3 + 2]!,
       );
       const giro = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), arriba);
-      escala.set(alto * 0.75, alto, alto * 0.75);
+      // Alto y estrecho, o bajo y ancho, según lo sedienta que sea la estirpe
+      // que manda en la celda. Dos bosques adaptados a sitios distintos ya no
+      // solo se ven de otro color: se ven de otra forma.
+      const porte = 0.6 + (inst.vegetacionPorte[celda]! / 255) * 1.1;
+      escala.set((alto * 0.75) / porte, alto * porte, (alto * 0.75) / porte);
       matriz.compose(sitio, giro, escala);
       this.arboles!.setMatrixAt(arboles, matriz);
 
@@ -279,12 +293,9 @@ export class VistaPlaneta {
     // que no se puede conseguir con un menú: dos que pueden cruzarse tienen
     // genomas parecidos y salen del mismo color solos, así que **una especie
     // nueva se ve como una mancha de otro color**, sin que nadie la anuncie.
-    let bichos = 0;
+    const dibujadosPorForma = new Int32Array(this.bichos.length);
     for (let i = 0; i < inst.criaturaCelda.length; i++) {
       const celda = inst.criaturaCelda[i]!;
-      // Del tamaño de un árbol pequeño. Se probó con la mitad y no se distinguían
-      // de la vegetación, y un bicho que no se ve es un bicho que no existe
-      // (CLAUDE.md §0: la capa de observación es la mitad del proyecto).
       const grande = 0.009 + (inst.criaturaTamano[i]! / 255) * 0.011;
       const r = radioDeCelda(inst.altura[celda]!, RADIO_PLANETA) + grande * 1.6;
 
@@ -309,22 +320,38 @@ export class VistaPlaneta {
         .addScaledVector(lado, Math.cos(angulo) * aparte)
         .addScaledVector(otroLado, Math.sin(angulo) * aparte);
 
-      escala.set(grande, grande, grande);
-      matriz.compose(sitio, sinRotar, escala);
-      this.bichos!.setMatrixAt(bichos, matriz);
+      // Estirado o achatado, según el gen de velocidad. Un cuerpo hecho para
+      // moverse se ve alto y estrecho; uno lento, bajo y ancho. Igual que la
+      // forma, es una lectura del gen y no una causa: correr no depende de la
+      // silueta, depende del gen que la silueta está enseñando.
+      const esbelto = 0.65 + (inst.criaturaEsbeltez[i]! / 255) * 0.9;
+      escala.set(grande / Math.sqrt(esbelto), grande * esbelto, grande / Math.sqrt(esbelto));
 
-      // Del genoma al color: una vuelta entera de tonos, para que dos genomas
-      // lejanos no puedan salir del mismo color por casualidad.
-      // Saturado y claro a propósito: tienen que despegarse del verde del monte
-      // y del azul del mar, o el color deja de contar nada.
+      // De pie, apuntando hacia fuera del planeta: si no, un cuerpo estirado se
+      // vería tumbado y el estiramiento no diría nada.
+      const giro = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), arriba);
+      matriz.compose(sitio, giro, escala);
+
+      const cual = Math.min(
+        this.bichos.length - 1,
+        ((inst.criaturaPunta[i]! * this.bichos.length) / 256) | 0,
+      );
+      // El gen va de toda carne a toda planta, y las mallas de puntiaguda a
+      // redonda, así que se recorre al revés.
+      const malla = this.bichos[this.bichos.length - 1 - cual]!;
+      const n = dibujadosPorForma[this.bichos.length - 1 - cual]!;
+      malla.setMatrixAt(n, matriz);
       tono.setHSL(inst.criaturaTinte[i]! / 255, 0.95, 0.62);
-      this.bichos!.setColorAt(bichos, tono);
-      bichos++;
+      malla.setColorAt(n, tono);
+      dibujadosPorForma[this.bichos.length - 1 - cual] = n + 1;
     }
     matriz.compose(vacio, sinRotar, new THREE.Vector3(0, 0, 0));
-    for (let i = bichos; i < MAX_CRIATURAS; i++) this.bichos!.setMatrixAt(i, matriz);
-    this.bichos!.instanceMatrix.needsUpdate = true;
-    if (this.bichos!.instanceColor) this.bichos!.instanceColor.needsUpdate = true;
+    for (let f = 0; f < this.bichos.length; f++) {
+      const malla = this.bichos[f]!;
+      for (let i = dibujadosPorForma[f]!; i < MAX_CRIATURAS; i++) malla.setMatrixAt(i, matriz);
+      malla.instanceMatrix.needsUpdate = true;
+      if (malla.instanceColor) malla.instanceColor.needsUpdate = true;
+    }
 
     // --- El sol, donde toca ---------------------------------------------------
     const d = direccionDelSol(inst.tick);
@@ -375,16 +402,30 @@ export class VistaPlaneta {
     this.arboles.frustumCulled = false;
     this.pivote.add(this.arboles);
 
-    if (this.bichos) this.pivote.remove(this.bichos);
-    // Los cuerpos. Un octaedro: se distingue de los conos de la vegetación de un
-    // vistazo, que es lo único que se le pide a la forma por ahora.
-    this.bichos = new THREE.InstancedMesh(
+    for (const m of this.bichos) this.pivote.remove(m);
+    // De puntiagudo a redondo: cuatro caras, ocho, doce y veinte. La escalera va
+    // en ese orden a propósito, porque el gen de la dieta la recorre entera —
+    // pura carne en un extremo, pura planta en el otro— y así el cambio de forma
+    // acompaña al cambio de gen en vez de dar saltos sueltos.
+    //
+    // Cuatro y no cuarenta: con más, dos genomas parecidos caerían en formas
+    // distintas por un pelo y se verían diferencias que no existen.
+    const formas = [
+      new THREE.TetrahedronGeometry(1, 0),
       new THREE.OctahedronGeometry(1, 0),
-      new THREE.MeshLambertMaterial({ flatShading: true }),
-      MAX_CRIATURAS,
-    );
-    this.bichos.frustumCulled = false;
-    this.pivote.add(this.bichos);
+      new THREE.DodecahedronGeometry(0.85, 0),
+      new THREE.IcosahedronGeometry(0.85, 0),
+    ];
+    this.bichos = formas.map((forma) => {
+      const malla = new THREE.InstancedMesh(
+        forma,
+        new THREE.MeshLambertMaterial({ flatShading: true }),
+        MAX_CRIATURAS,
+      );
+      malla.frustumCulled = false;
+      this.pivote.add(malla);
+      return malla;
+    });
 
     this.nivelDibujado = nivel;
   }

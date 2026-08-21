@@ -14,8 +14,15 @@ import {
   MAX_PLANTAS,
   PRESUPUESTO_MS_POR_TICK,
 } from './constants.js';
-import { leerRasgo, RASGO_TAMANO, tinteDelGenoma } from './genoma.js';
-import { GEN_TEMPERATURA } from './plantas.js';
+import {
+  leerRasgo,
+  RASGO_DIETA_CARNE,
+  RASGO_DIETA_VEGETAL,
+  RASGO_TAMANO,
+  RASGO_VELOCIDAD,
+  tinteDelGenoma,
+} from './genoma.js';
+import { GEN_SED, GEN_TEMPERATURA } from './plantas.js';
 import {
   crearEstado,
   deserializar,
@@ -48,6 +55,11 @@ export interface Instantanea {
    */
   vegetacionTinte: Uint8Array;
   /**
+   * Gen de sed medio de las plantas de cada celda. De aquí sale su porte: un
+   * bosque de secano se ve bajo y ancho, y uno de ribera alto y estrecho.
+   */
+  vegetacionPorte: Uint8Array;
+  /**
    * Los cuerpos vivos, uno por uno: en qué celda está cada uno, cómo de grande
    * es (0 a 255) y su color (0 a 255).
    *
@@ -58,6 +70,18 @@ export interface Instantanea {
   criaturaCelda: Int32Array;
   criaturaTamano: Uint8Array;
   criaturaTinte: Uint8Array;
+  /**
+   * De qué lado del gen de la dieta cae cada cuerpo: 0 todo planta, 255 toda
+   * carne. De aquí sale lo picuda que se dibuja su forma.
+   *
+   * **Que un carnívoro salga picudo no es una causa, es una lectura.** La forma
+   * no hace nada en el mundo: no muerde mejor por ser puntiaguda ni corre menos
+   * por ser redonda. Es una manera de ver un gen con los ojos en vez de tener
+   * que abrir un menú.
+   */
+  criaturaPunta: Uint8Array;
+  /** El gen de velocidad, de 0 a 255. De aquí sale si el cuerpo se ve estirado. */
+  criaturaEsbeltez: Uint8Array;
 }
 
 /**
@@ -171,6 +195,8 @@ export class Mundo {
     criaturaCelda: Int32Array;
     criaturaTamano: Uint8Array;
     criaturaTinte: Uint8Array;
+    criaturaPunta: Uint8Array;
+    criaturaEsbeltez: Uint8Array;
   } {
     const vivas: number[] = [];
     for (let c = 0; c < MAX_CRIATURAS; c++) {
@@ -179,6 +205,8 @@ export class Mundo {
     const celda = new Int32Array(vivas.length);
     const tamano = new Uint8Array(vivas.length);
     const tinte = new Uint8Array(vivas.length);
+    const punta = new Uint8Array(vivas.length);
+    const esbeltez = new Uint8Array(vivas.length);
     const g = this.estado.criaturaGenoma;
     for (let i = 0; i < vivas.length; i++) {
       const c = vivas[i]!;
@@ -186,17 +214,39 @@ export class Mundo {
       celda[i] = this.estado.criaturaCelda[c]!;
       tamano[i] = (leerRasgo(g, base, RASGO_TAMANO) * 255) | 0;
       tinte[i] = (tinteDelGenoma(g, base) * 255) | 0;
+
+      // De qué lado del gen de la dieta cae este cuerpo. Cero es todo planta,
+      // 255 es toda carne. No hay herbívoros ni carnívoros declarados en ningún
+      // sitio: son los dos extremos del mismo gen y un linaje puede recorrer el
+      // camino entero de uno al otro.
+      const carne = leerRasgo(g, base, RASGO_DIETA_CARNE);
+      const verde = leerRasgo(g, base, RASGO_DIETA_VEGETAL);
+      const suma = carne + verde;
+      punta[i] = suma > 0 ? ((carne / suma) * 255) | 0 : 128;
+
+      esbeltez[i] = (leerRasgo(g, base, RASGO_VELOCIDAD) * 255) | 0;
     }
-    return { criaturaCelda: celda, criaturaTamano: tamano, criaturaTinte: tinte };
+    return {
+      criaturaCelda: celda,
+      criaturaTamano: tamano,
+      criaturaTinte: tinte,
+      criaturaPunta: punta,
+      criaturaEsbeltez: esbeltez,
+    };
   }
 
   /**
    * Junta las plantas de cada celda en dos números: cuánta materia vegetal hay
    * y de qué tono es. El dibujo no necesita saber de plantas una por una.
    */
-  private resumirVegetacion(): { vegetacion: Int32Array; vegetacionTinte: Uint8Array } {
+  private resumirVegetacion(): {
+    vegetacion: Int32Array;
+    vegetacionTinte: Uint8Array;
+    vegetacionPorte: Uint8Array;
+  } {
     const vegetacion = new Int32Array(this.estado.nCeldas);
     const sumaTinte = new Float64Array(this.estado.nCeldas);
+    const sumaPorte = new Float64Array(this.estado.nCeldas);
     const cuenta = new Int32Array(this.estado.nCeldas);
 
     for (let p = 0; p < MAX_PLANTAS; p++) {
@@ -204,14 +254,22 @@ export class Mundo {
       if (celda < 0) continue;
       vegetacion[celda] = vegetacion[celda]! + this.estado.plantaMasa[p]!;
       sumaTinte[celda] = sumaTinte[celda]! + this.estado.plantaGenoma[p * GENES_PLANTA + GEN_TEMPERATURA]!;
+      // El gen de la sed. Un linaje que aguanta seco se ve bajo y ancho, y uno
+      // que pide mucha agua, alto y estrecho. Es una lectura del gen, no una
+      // causa: la planta no bebe más por ser estrecha.
+      sumaPorte[celda] = sumaPorte[celda]! + this.estado.plantaGenoma[p * GENES_PLANTA + GEN_SED]!;
       cuenta[celda] = cuenta[celda]! + 1;
     }
 
     const vegetacionTinte = new Uint8Array(this.estado.nCeldas);
+    const vegetacionPorte = new Uint8Array(this.estado.nCeldas);
     for (let i = 0; i < this.estado.nCeldas; i++) {
-      if (cuenta[i]! > 0) vegetacionTinte[i] = (sumaTinte[i]! / cuenta[i]!) | 0;
+      if (cuenta[i]! > 0) {
+        vegetacionTinte[i] = (sumaTinte[i]! / cuenta[i]!) | 0;
+        vegetacionPorte[i] = (sumaPorte[i]! / cuenta[i]!) | 0;
+      }
     }
-    return { vegetacion, vegetacionTinte };
+    return { vegetacion, vegetacionTinte, vegetacionPorte };
   }
 
   aBytes(): Uint8Array {

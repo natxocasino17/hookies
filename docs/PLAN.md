@@ -532,6 +532,43 @@ la misma corrida y en la misma máquina — el número absoluto no vale, la
 proporción sí). O sea que los sentidos son baratos y lo caro de la fase 4 va a
 ser el cerebro, no lo que le entra por delante.
 
+### Las formas salen del genoma, no de un catálogo
+
+Un bicho, en la simulación, **no tiene forma**. Tiene tamaño, metabolismo,
+dieta, aguante al dolor — números. No tiene patas ni cabeza. Así que dibujarlo
+como un lobo sería mentir, y tener una lista de modelos (lobo, ciervo, pájaro)
+sería declarar especies a mano, que es lo único que el proyecto no permite
+(§1.3).
+
+Lo que sí se puede hacer es la misma jugada que el color: **que la silueta sea
+una lectura de genes que ya significan algo**.
+
+- **Lo picudo sale del gen de la dieta.** Cuatro poliedros, de cuatro caras a
+  veinte, y un cuerpo cae en el que le toca según de qué lado del gen esté. Puro
+  carnívoro sale en tetraedro y puro herbívoro en icosaedro. Cuatro y no
+  cuarenta a propósito: con más, dos genomas casi iguales caerían en formas
+  distintas por un pelo y se verían diferencias que no existen.
+- **Lo estirado sale del gen de velocidad.** Un cuerpo hecho para moverse se ve
+  alto y estrecho; uno lento, bajo y ancho.
+- **El color sale de proyectar el genoma entero**, como ya estaba.
+- **Los árboles también**: el porte sale del gen de la sed, así que un bosque de
+  secano se ve bajo y ancho y uno de ribera alto y estrecho. Ya no solo cambian
+  de color entre climas: cambian de forma.
+
+Lo que hay que dejar dicho con todas las letras, porque es fácil confundirse al
+mirar la pantalla: **que un carnívoro salga picudo no es una causa, es una
+lectura**. La forma no hace nada en el mundo — no muerde mejor por ser
+puntiaguda ni corre menos por ser redonda. Nada del render entra en la
+simulación. Es una manera de ver un gen con los ojos en vez de abrir un menú.
+
+Y lo que se gana con eso es lo que se buscaba desde el principio: un linaje
+entero comparte silueta porque comparte genes, así que **una rama que se separa
+se ve cambiar de forma y de color a la vez**, sin que nadie la anuncie.
+
+Sabido y no arreglado: un bicho puntiagudo y un árbol se parecen de lejos. Hoy
+los separa el color —los cuerpos van saturados y los árboles en verdes
+apagados— pero si a un linaje le toca un tinte verdoso, se confunden.
+
 ### Ahora se les ve
 
 Hasta esta sesión el render dibujaba terreno, mar, nubes y vegetación, y **las
