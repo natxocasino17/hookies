@@ -25,9 +25,11 @@
 import {
   CONSTANCIA_DEL_PUENTE,
   COSTE_DE_EMITIR,
+  COSTE_DE_EMITIR_A_TOPE,
   COSTE_DE_MORDER,
   COSTE_DE_MOVERSE,
   COSTE_DE_RASCAR,
+  COSTE_DE_RASCAR_A_FONDO,
   CURACION_POR_TICK,
   DANO_MORTAL,
   DANO_POR_GRADO,
@@ -67,6 +69,7 @@ import {
   PROB_EMITIR,
   PROB_MORDER,
   PROB_MOVER,
+  PROB_IMITAR_POR_MIL,
   PROB_RASCAR,
   PUDRICION_DIVISOR,
   RANGO_DE_FERTILIDAD,
@@ -74,9 +77,14 @@ import {
   RANGO_DE_TAMANO,
   RANGO_TEMPERATURA_CUERPO,
   REPARTO_SENAL_POR_MIL,
+  RECOMPENSA_QUE_LLAMA_LA_ATENCION,
   RITMO_MINIMO,
   SILENCIO,
   TAMANO_MINIMO,
+  UMBRAL_DE_CALLARSE,
+  UMBRAL_DE_MORDER,
+  UMBRAL_DE_MOVERSE,
+  UMBRAL_DE_RASCAR,
   TEMPERATURA_PREFERIDA_MINIMA,
   TOP_N_MOLECULAS,
   UMBRAL_DEL_PUENTE,
@@ -84,6 +92,17 @@ import {
 import type { EstadoMundo } from './estado.js';
 import type { Geometria } from './geodesica.js';
 import { siguienteDecimal, siguienteEntero } from './rng.js';
+import {
+  anotarLoHecho,
+  aprender,
+  costeDePensar,
+  estrenarCerebro,
+  imitar,
+  ocultasActivas,
+  pensar,
+} from './cerebro.js';
+import { marcoLocalDeCelda, sentir } from './sentidos.js';
+import { DESPLAZAMIENTO_SALIDA } from './verbos.js';
 import { esAutocatalitica } from './autocatalisis.js';
 import { atomoEn, longitud, MOLECULA_VACIA } from './molecula.js';
 import {
@@ -238,10 +257,15 @@ function mirarElPuente(estado: EstadoMundo, geo: Geometria): void {
 
     estado.criaturaCelda[hueco] = celda;
     entrarEnLaCelda(estado, hueco, celda);
+    // El cerebro se estrena con los pesos que trae escritos. A partir de aquí,
+    // lo que aprenda es suyo y no lo heredará nadie.
     estado.criaturaMateria[hueco] = MATERIA_AL_NACER;
     estado.criaturaGameto[hueco] = 0;
     estado.criaturaEnergia[hueco] = ENERGIA_AL_NACER;
     estado.criaturaDano[hueco] = 0;
+    // Después de darle su energía, nunca antes: el cerebro guarda con cuánto
+    // empieza para que su primer tick no vea un premio de la nada.
+    estrenarCerebro(estado, hueco);
     estado.criaturaEdad[hueco] = 0;
     estado.criaturaTemperatura[hueco] = estado.temperatura[celda]!;
     // Cada condensación funda un linaje nuevo. Los hijos heredan el número.
@@ -259,6 +283,13 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
   estado.nacimientosEsteTick = 0;
   estado.muertesEsteTick = 0;
   estado.cruzamientosEsteTick = 0;
+  estado.imitacionesEsteTick = 0;
+  // Este contador decía "EsteTick" y no se reiniciaba nunca: llevaba sumando
+  // desde el primer tick del mundo. Salió al mirar la telemetría de la fase 4
+  // —409 millones de señales— y el test de la fase 3 no lo cazó porque le
+  // bastaba con que fuera mayor que cero.
+  estado.senalesEsteTick = 0;
+  estado.verbosEsteTick.fill(0);
 
   if (estado.tick % MIRAR_EL_PUENTE_CADA === 0) mirarElPuente(estado, geo);
 
@@ -267,7 +298,7 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
   let sumaEdadMuerte = 0;
 
   for (let c = 0; c < MAX_CRIATURAS; c++) {
-    const celda = estado.criaturaCelda[c]!;
+    let celda = estado.criaturaCelda[c]!;
     if (celda < 0) continue;
 
     const base = c * MAX_CADENA_GENOMA;
@@ -294,13 +325,27 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
       estado.criaturaDano[c] = estado.criaturaDano[c]! + (desvio - MARGEN_TERMICO) * DANO_POR_GRADO;
     }
 
-    // --- Los cinco verbos, elegidos al azar por ahora -----------------------
+    // --- Los cinco verbos ---------------------------------------------------
     //
-    // En la fase 3 no hay cerebro: los verbos salen del azar sembrado. Es la
-    // línea base contra la que se medirá si los cerebros de la fase 4 sirven
-    // para algo. Sin esta comparación, "se mueven con sentido" sería una
-    // impresión y no un dato.
-    ejecutarVerbosAlAzar(estado, geo, c, celda, tamano);
+    // Con cerebro, decide el cerebro. Sin cerebro, se tiran los dados — y eso
+    // segundo NO es el modo normal del juego: es el control del experimento
+    // (ver `EstadoMundo.conCerebro`). Los dos caminos existen a la vez porque el
+    // criterio 1 de la fase 4 es comparar uno con otro en la misma semilla.
+    if (estado.conCerebro) {
+      const activas = ocultasActivas(genomas, base);
+      // Pensar cuesta, y cuesta más cuantas más neuronas se tengan encendidas.
+      estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - costeDePensar(activas);
+      sentir(estado, geo, c, estado.sentidosDeTrabajo, estado.marcoDeTrabajo);
+      pensar(estado, c, estado.sentidosDeTrabajo, estado.salidaDeTrabajo, activas);
+      anotarLoHecho(estado, c, estado.salidaDeTrabajo);
+      ejecutarLosVerbos(estado, geo, c, celda, tamano, estado.salidaDeTrabajo);
+      celda = estado.criaturaCelda[c]!;
+      aprender(estado, c, activas);
+      copiarAlQueTuvoSuerte(estado, c, celda, activas);
+    } else {
+      ejecutarVerbosAlAzar(estado, geo, c, celda, tamano);
+      celda = estado.criaturaCelda[c]!;
+    }
 
     // --- Curarse cuesta comida (decisión D13) -------------------------------
     if (estado.criaturaDano[c]! > 0 && estado.criaturaEnergia[c]! > ENERGIA_PARA_CURARSE) {
@@ -359,6 +404,168 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
 }
 
 /**
+ * Los cinco verbos, con el cerebro al mando.
+ *
+ * Lo que llega es un vector de nueve números entre -1 y 1, y **ninguno tiene
+ * nombre**. El primero y el segundo son hacia dónde tira, el tercero decide
+ * agarrar o soltar, el cuarto morder, del quinto al octavo son la señal y el
+ * noveno es rascar. Que el cuarto acabe subiendo cuando hay comida delante, o
+ * que del quinto al octavo salga siempre lo mismo ante un peligro, es cosa de la
+ * selección: aquí no hay ninguna rama que lo diga.
+ *
+ * Los umbrales son cero. Por encima de cero se hace, por debajo no, y a un
+ * cerebro recién nacido eso le sale más o menos la mitad de las veces — igual de
+ * torpe que tirar los dados, que es exactamente como tiene que empezar.
+ */
+function ejecutarLosVerbos(
+  estado: EstadoMundo,
+  geo: Geometria,
+  c: number,
+  celda: number,
+  tamano: number,
+  salida: Float32Array,
+): void {
+  const base = c * MAX_CADENA_GENOMA;
+
+  // MOVER. Los dos primeros números son una flecha en el plano de la celda; se
+  // va a la vecina que más se le parezca. Si la flecha es casi nada, no se mueve.
+  const mu = salida[DESPLAZAMIENTO_SALIDA.MOVER]!;
+  const mv = salida[DESPLAZAMIENTO_SALIDA.MOVER + 1]!;
+  if (mu * mu + mv * mv > UMBRAL_DE_MOVERSE * UMBRAL_DE_MOVERSE) {
+    const k = vecinaEnLaDireccion(geo, celda, mu, mv, estado.marcoDeTrabajo);
+    if (k >= 0) {
+      const destino = geo.vecinos[celda * MAX_VECINOS + k]!;
+      salirDeLaCelda(estado, c, celda);
+      estado.criaturaCelda[c] = destino;
+      entrarEnLaCelda(estado, c, destino);
+      estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_MOVERSE * tamano;
+      estado.verbosEsteTick[0] = estado.verbosEsteTick[0]! + 1;
+      celda = destino;
+    }
+  }
+
+  // MORDER lo que haya delante: plantas, carroña, u otro cuerpo.
+  if (salida[DESPLAZAMIENTO_SALIDA.MORDER]! > UMBRAL_DE_MORDER) {
+    estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_MORDER * tamano;
+    estado.verbosEsteTick[2] = estado.verbosEsteTick[2]! + 1;
+    morder(estado, c, celda, base);
+  }
+
+  // EMITIR SEÑAL. Los cuatro números salen del cerebro tal cual y se suman a lo
+  // que suene en la celda.
+  //
+  // Esto no es de sí o no: se grita más fuerte o más flojo, y **gritar más
+  // fuerte cuesta más**. Un cerebro que no tiene nada que decir saca ceros y no
+  // paga nada. Uno que se pasa el día gritando se queda sin energía y se muere.
+  //
+  // Nunca se premia emitir (§1.5). Lo único que hay es el coste, y de ahí sale
+  // sola la presión para callarse: si algún día un linaje empieza a gritar y le
+  // sale a cuenta, será porque decir eso le está sirviendo para comer o para no
+  // morir, no porque nadie le haya dado nada por hacerlo.
+  let fuerzaSenal = 0;
+  for (let k = 0; k < 4; k++) {
+    const cuanto = salida[DESPLAZAMIENTO_SALIDA.EMITIR_SENAL + k]!;
+    fuerzaSenal += cuanto < 0 ? -cuanto : cuanto;
+  }
+  fuerzaSenal /= 4;
+  if (fuerzaSenal > UMBRAL_DE_CALLARSE) {
+    for (let k = 0; k < 4; k++) {
+      estado.senalAire[celda * 4 + k] =
+        estado.senalAire[celda * 4 + k]! +
+        salida[DESPLAZAMIENTO_SALIDA.EMITIR_SENAL + k]! * FUERZA_DE_LA_SENAL;
+    }
+    estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - fuerzaSenal * COSTE_DE_EMITIR_A_TOPE;
+    estado.senalesEsteTick++;
+    estado.verbosEsteTick[3] = estado.verbosEsteTick[3]! + 1;
+  }
+
+  // RASCAR EL SUELO. Igual: se rasca más hondo o menos, y cuesta a proporción.
+  // Lo que se deja escrito son los mismos cuatro números que se dirían en voz
+  // alta — un cuerpo no tiene dos vocabularios, tiene uno.
+  const fuerzaRascado = salida[DESPLAZAMIENTO_SALIDA.RASCAR_SUELO]!;
+  if (fuerzaRascado > UMBRAL_DE_RASCAR) {
+    estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - fuerzaRascado * COSTE_DE_RASCAR_A_FONDO;
+    estado.verbosEsteTick[4] = estado.verbosEsteTick[4]! + 1;
+    for (let k = 0; k < 4; k++) {
+      estado.marcaSuelo[celda * 4 + k] =
+        estado.marcaSuelo[celda * 4 + k]! +
+        salida[DESPLAZAMIENTO_SALIDA.EMITIR_SENAL + k]! * FUERZA_DEL_RASCADO * fuerzaRascado;
+    }
+  }
+
+  // AGARRAR / SOLTAR no hace nada todavía: no hay objetos que agarrar (decisión
+  // D11). La salida existe, el cerebro la mueve y no pasa nada. Se deja así a
+  // propósito en vez de quitarla, porque quitarla sería cambiar el tamaño del
+  // vector de salida, y ese vector es la lista de los cinco verbos.
+}
+
+/**
+ * A qué vecina apunta una flecha dibujada en el plano de la celda.
+ *
+ * Se proyecta cada vecina sobre las mismas dos direcciones que usa el olfato, y
+ * gana la que más se parezca. Que sean las mismas direcciones importa: si el
+ * cerebro huele hacia un lado y mueve hacia otro sistema de referencia, no habría
+ * forma de que aprendiera a ir hacia lo que huele.
+ */
+function vecinaEnLaDireccion(
+  geo: Geometria,
+  celda: number,
+  u: number,
+  v: number,
+  marco: Float64Array,
+): number {
+  marcoLocalDeCelda(geo, celda, marco);
+  let mejor = -1;
+  let mejorParecido = 0;
+  const vecinos = geo.nVecinos[celda]!;
+  for (let k = 0; k < vecinos; k++) {
+    const j = geo.vecinos[celda * MAX_VECINOS + k]!;
+    const dx = geo.centro[j * 3]! - geo.centro[celda * 3]!;
+    const dy = geo.centro[j * 3 + 1]! - geo.centro[celda * 3 + 1]!;
+    const dz = geo.centro[j * 3 + 2]! - geo.centro[celda * 3 + 2]!;
+    const largo = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (largo <= 0) continue;
+    const hu = (dx * marco[0]! + dy * marco[1]! + dz * marco[2]!) / largo;
+    const hv = (dx * marco[3]! + dy * marco[4]! + dz * marco[5]!) / largo;
+    const parecido = u * hu + v * hv;
+    if (parecido > mejorParecido) {
+      mejorParecido = parecido;
+      mejor = k;
+    }
+  }
+  return mejor;
+}
+
+/**
+ * Si en tu celda alguien acaba de tener un golpe de suerte grande, algo de cómo
+ * lo estaba haciendo se te pega.
+ *
+ * No hay verbo "mirar" ni verbo "enseñar", y nadie decide imitar a nadie. Y
+ * **nada evita que se pegue una asociación equivocada**: si al de al lado le
+ * llegó la suerte mientras rascaba el suelo, se copia también lo de rascar.
+ */
+function copiarAlQueTuvoSuerte(
+  estado: EstadoMundo,
+  c: number,
+  celda: number,
+  activas: number,
+): void {
+  if (siguienteEntero(estado.rng, 1000) >= PROB_IMITAR_POR_MIL) return;
+  for (let otro = estado.cabezaEnCelda[celda]!; otro >= 0; otro = estado.siguienteEnCelda[otro]!) {
+    if (otro === c) continue;
+    const suSuerte = estado.criaturaEnergia[otro]! - estado.criaturaDano[otro]! -
+      estado.criaturaBienestar[otro]!;
+    if (suSuerte < RECOMPENSA_QUE_LLAMA_LA_ATENCION) continue;
+    // Se copia lo que quepa en el menor de los dos cerebros: las neuronas que
+    // uno no tiene encendidas no significan nada para el otro.
+    const suyas = ocultasActivas(estado.criaturaGenoma, otro * MAX_CADENA_GENOMA);
+    imitar(estado, c, otro, activas < suyas ? activas : suyas);
+    estado.imitacionesEsteTick++;
+    return;
+  }
+}
+
+/**
  * Los cinco verbos con el mando en manos del azar.
  *
  * Ojo a lo que NO hay: ninguna elección mira si hay comida cerca, ni si hay
@@ -382,12 +589,14 @@ function ejecutarVerbosAlAzar(
     estado.criaturaCelda[c] = destino;
     entrarEnLaCelda(estado, c, destino);
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_MOVERSE * tamano;
+    estado.verbosEsteTick[0] = estado.verbosEsteTick[0]! + 1;
     celda = destino;
   }
 
   // MORDER — lo que haya delante: plantas, carroña, u otro cuerpo.
   if (siguienteDecimal(estado.rng) < PROB_MORDER) {
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_MORDER * tamano;
+    estado.verbosEsteTick[2] = estado.verbosEsteTick[2]! + 1;
     morder(estado, c, celda, base);
   }
 
@@ -405,6 +614,7 @@ function ejecutarVerbosAlAzar(
       estado.senalAire[celda * 4 + k] = estado.senalAire[celda * 4 + k]! + cuanto;
     }
     estado.senalesEsteTick++;
+    estado.verbosEsteTick[3] = estado.verbosEsteTick[3]! + 1;
   }
 
   // RASCAR EL SUELO — deja cuatro números en la celda. Nadie los interpreta.
@@ -413,6 +623,7 @@ function ejecutarVerbosAlAzar(
   // lo rascó se ha muerto. Es lo único de este mundo que se parece a escribir.
   if (siguienteDecimal(estado.rng) < PROB_RASCAR) {
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - COSTE_DE_RASCAR;
+    estado.verbosEsteTick[4] = estado.verbosEsteTick[4]! + 1;
     for (let k = 0; k < 4; k++) {
       const cuanto = (siguienteDecimal(estado.rng) * 2 - 1) * FUERZA_DEL_RASCADO;
       estado.marcaSuelo[celda * 4 + k] = estado.marcaSuelo[celda * 4 + k]! + cuanto;
@@ -613,6 +824,7 @@ function crearCriaDeDos(
   estado.criaturaGameto[hueco] = 0;
   estado.criaturaEnergia[hueco] = ENERGIA_DE_LA_CRIA;
   estado.criaturaDano[hueco] = 0;
+  estrenarCerebro(estado, hueco);
   estado.criaturaEdad[hueco] = 0;
   estado.criaturaTemperatura[hueco] = estado.criaturaTemperatura[a]!;
   // El linaje se hereda del primero. Con sexo, ese número dice cada vez menos:
@@ -662,6 +874,7 @@ function gemar(estado: EstadoMundo, geo: Geometria, madre: number, celda: number
   estado.criaturaGameto[hueco] = 0;
   estado.criaturaEnergia[hueco] = ENERGIA_DE_LA_CRIA;
   estado.criaturaDano[hueco] = 0;
+  estrenarCerebro(estado, hueco);
   estado.criaturaEdad[hueco] = 0;
   estado.criaturaTemperatura[hueco] = estado.criaturaTemperatura[madre]!;
   estado.criaturaLinaje[hueco] = estado.criaturaLinaje[madre]!;

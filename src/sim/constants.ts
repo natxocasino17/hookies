@@ -956,6 +956,197 @@ export const MATERIA_DE_LA_CRIA = 45;
 /** Energía que se lleva la cría. */
 export const ENERGIA_DE_LA_CRIA = 90;
 
+// --- EL CEREBRO ------------------------------------------------------------
+//
+// Una red por criatura, con los pesos sacados de su propio genoma: un átomo, un
+// peso. Eso quiere decir que una errata al copiar mueve un peso un escalón, y
+// que los aciertos y los errores se heredan exactamente igual.
+//
+// La cuenta, para que se vea que no está inventada: 24 entradas × 64 ocultas +
+// 64 × 64 recurrentes + 64 × 9 salidas + los sesgos = 6.281 pesos. El genoma
+// tiene 8.192 átomos, de los que 312 se van en rasgos y 64 en el tinte. Quedan
+// 7.816. Caben, con 1.535 de sobra. El genoma largo (decisión D2) se eligió
+// justamente para esto.
+
+/** Neuronas ocultas que hay en memoria. Todas las criaturas tienen las mismas. */
+export const OCULTAS_EN_MEMORIA = 64;
+
+/**
+ * Cuántas de esas ocultas usa de verdad un cerebro, según su gen.
+ *
+ * El tamaño fijo en memoria con una máscara genética encima es la respuesta al
+ * riesgo §5: copiar pesos entre una red de 16 y otra de 64 no significa nada
+ * porque los índices no se corresponden, y sería ruido destructivo en vez de
+ * cultura. Con todas del mismo tamaño y una máscara, herencia e imitación tienen
+ * un espacio de índices común. Lo que se desperdicia son unos KB por bicho.
+ *
+ * Las apagadas no se calculan, así que un cerebro grande cuesta de verdad.
+ */
+export const OCULTAS_MINIMAS = 16;
+
+/**
+ * Cuánta energía extra por tick cuesta cada neurona encendida.
+ *
+ * Pensar tiene que costar, o el gen del tamaño de cerebro subiría siempre y no
+ * habría nada que equilibrar. No es un castigo a ser listo: es que un tejido que
+ * trabaja consume.
+ */
+export const COSTE_POR_NEURONA = 0.0022;
+
+/**
+ * A qué valores mapean los átomos del genoma cuando se leen como pesos.
+ *
+ * Un átomo vale de 0 a N_TIPOS_ATOMO-1, así que un peso solo puede tomar seis
+ * valores repartidos entre -RANGO y +RANGO. Es una resolución basta y se dice
+ * sin adornos — pero es la consecuencia directa de que el genoma sea química de
+ * verdad y no un vector de decimales. La finura sale de tener miles de pesos, no
+ * de que cada uno sea preciso.
+ */
+export const RANGO_DE_PESO = 1.2;
+
+/**
+ * Cuánto de lo que una neurona tenía se conserva de un tick al siguiente.
+ *
+ * Una neurona no se recalcula de cero cada tick: arrastra parte de lo que
+ * traía. Eso es la inercia de membrana de una neurona de verdad, y aquí hace
+ * dos cosas a la vez.
+ *
+ * La primera es que **desatasca la saturación**, que era lo que tenía el cerebro
+ * inservible. Sin inercia, el bucle recurrente se realimenta y todas las
+ * neuronas acaban clavadas en +1 o -1; medido, el 23 % de las salidas se quedaba
+ * pegado al 1, y sobre una distribución así ningún umbral controla nada — los
+ * cerebros actuaban el doble o el triple que los dados y el mundo se extinguía
+ * entero, con un pico de 17 criaturas contra las 1.262 del control.
+ *
+ * La segunda es que le da al cerebro una escala de tiempo propia: con esto, lo
+ * que pasó hace diez ticks todavía pesa un poco. Sin memoria no hay manera de
+ * que nada dure más de un instante.
+ */
+export const INERCIA_DE_NEURONA = 0.7;
+
+// --- Los umbrales de los dos verbos que son de sí o no ---------------------
+//
+// Moverse y morder pasan o no pasan: se va a la celda de al lado o no se va. Los
+// dos umbrales están MEDIDOS, no elegidos, y el criterio es uno solo: **que un
+// cerebro recién nacido sea exactamente igual de torpe que los dados**.
+//
+// Eso no es un detalle de afinado, es lo que hace que la fase 4 se pueda medir.
+// Si los cerebros actuaran el doble de veces que el control, la comparación no
+// diría si el cerebro sirve: diría que moverse mucho sale caro. Y salió caro —
+// con los umbrales a ojo, los cerebros se movían el 68 % de los ticks contra el
+// 35 % de los dados, y el mundo se extinguía entero antes del tick 4.000.
+//
+// Medidos sobre 1.500 cerebros con **genomas y sentidos sacados del mundo que
+// vive** — el del control, que es el único que llega a tener población.
+//
+// Que sean genomas de verdad y no genomas al azar es lo que costó ver, y es la
+// diferencia entera. Un genoma de este mundo no es ruido: es la cadena de un
+// ciclo autocatalítico de tres o cuatro átomos **repetida dos mil veces**. Un
+// cerebro hecho de un patrón repetido no se parece en nada a uno hecho de ruido,
+// y los números lo cantan — la salida de morder tiene mediana -0,91 con genomas
+// reales y +0,04 con genomas al azar. El umbral que deja pasar al 30 % es -0,75
+// en un caso y +0,55 en el otro.
+//
+// Con los umbrales sacados de genomas al azar, los cerebros de verdad se movían
+// el 1,3 % de los ticks y mordían el 0,9 %, contra el 35 y el 30 % del control.
+// Estaban catatónicos y el mundo se extinguía, y la causa no era el cerebro:
+// era que yo había medido la población equivocada.
+
+/** La flecha de moverse pasa de aquí el 35 % de las veces, igual que los dados. */
+export const UMBRAL_DE_MOVERSE = 0.7623;
+
+/** La salida de morder pasa de aquí el 30 % de las veces, igual que los dados. */
+export const UMBRAL_DE_MORDER = 0.0104;
+
+/** La fuerza de la señal pasa de aquí el 10 % de las veces, igual que los dados. */
+export const UMBRAL_DE_CALLARSE = 0.6065;
+
+/** La salida de rascar pasa de aquí el 6 % de las veces, igual que los dados. */
+export const UMBRAL_DE_RASCAR = 0.9759;
+
+// --- Y lo que cuesta gritar y rascar ---------------------------------------
+//
+// Estos dos tienen umbral como los otros, pero además **cuestan a proporción de
+// lo fuerte que se hagan**. Gritar no es de sí o no: se grita más alto o más
+// bajo, y gritar más alto cuesta más. Eso es física, no un afinado.
+//
+// Un cerebro que no tiene nada que decir se queda por debajo del umbral y no
+// paga nada. Uno que grita a pleno pulmón todo el rato se queda sin energía y se
+// muere. La presión para callarse sale sola de ahí, y no hace falta premiar el
+// silencio ni castigar el ruido en ninguna parte (§1.5).
+
+/** Lo que cuesta emitir a toda potencia. Proporcional a lo fuerte que se grite. */
+export const COSTE_DE_EMITIR_A_TOPE = 0.9;
+
+/** Lo que cuesta rascar a fondo. Proporcional a lo fuerte que se rasque. */
+export const COSTE_DE_RASCAR_A_FONDO = 0.5;
+
+// --- Aprender en vida ------------------------------------------------------
+//
+// Lo que se hereda es el instinto: la capa oculta y su recurrencia no cambian
+// nunca dentro de una vida. Lo que aprende es la capa de salida, que es la que
+// traduce lo que el cerebro está pensando en lo que el cuerpo hace.
+//
+// Que solo aprenda la salida no es pereza, es lo que cabe: guardar una traza por
+// cada uno de los 6.281 pesos serían 75 MB para tres mil bichos. Con la traza
+// por neurona en vez de por peso, son 0,9 MB. Y tiene sentido de suyo — el
+// instinto lo afina la evolución a lo largo de generaciones, y lo que se ajusta
+// en una vida es la lectura de ese instinto.
+//
+// Está apuntado como límite conocido: si la fase 4 no despega, uno de los sitios
+// donde mirar es este.
+
+/**
+ * La ÚNICA recompensa que existe: lo que ha cambiado la energía menos el dolor
+ * de un tick al siguiente (CLAUDE.md §1.5).
+ *
+ * No se premia comunicar, ni cooperar, ni explorar, ni reproducirse. Comer sube
+ * la energía y por eso comer sale bien; que te muerdan sube el dolor y por eso
+ * sale mal. Todo lo demás que llegue a pasar tendrá que pasar porque lleva a
+ * eso, no porque esté premiado aparte.
+ *
+ * El número es pequeño y hay una cuenta detrás. Estaba cien veces más alto y el
+ * resultado fue que **el aprendizaje apagaba a los bichos**: cada tick movía un
+ * peso 0,21 sobre un rango de ±1,2, o sea que en quince ticks lo tenía contra el
+ * tope. Se vio apagando el aprendizaje del todo — las tasas de acción saltaron
+ * del 2,2 % al 20,6 %, y eso señaló al culpable sin lugar a dudas. Aprender en
+ * vida tiene que ser lento y acumulativo, no un volantazo por tick.
+ */
+export const APRENDIZAJE_POR_DIEZ_MIL = 12;
+
+/**
+ * Cuánto pesa lo de antes en la idea que un cuerpo tiene de "lo normal", por mil.
+ *
+ * Alto: la referencia se mueve despacio, así que una racha buena se nota como
+ * buena durante un rato en vez de convertirse en la nueva normalidad al instante.
+ */
+export const MEMORIA_DE_LO_NORMAL_POR_MIL = 970;
+
+/** Qué parte de la traza de elegibilidad queda de un tick al siguiente, por mil. */
+export const PERMANENCIA_TRAZA_POR_MIL = 780;
+
+/** Tope de un peso aprendido, para que no se dispare a infinito. */
+export const TOPE_DE_PESO_APRENDIDO = 3;
+
+// --- Copiar a otros --------------------------------------------------------
+
+/**
+ * Recompensa a partir de la cual un cuerpo llama la atención de los que tiene al
+ * lado.
+ *
+ * No hay ningún verbo "enseñar" ni "mirar": si en tu celda alguien acaba de
+ * tener un golpe de suerte grande, algo de cómo lo hizo se te pega. Puede
+ * pegársete una asociación equivocada perfectamente, y **nada lo evita**: las
+ * supersticiones heredadas son contenido, no bugs (CLAUDE.md §3).
+ */
+export const RECOMPENSA_QUE_LLAMA_LA_ATENCION = 9;
+
+/** Qué parte de la diferencia de pesos se copia al imitar, por mil. */
+export const IMITACION_POR_MIL = 120;
+
+/** Probabilidad por mil de que un cuerpo copie a un vecino con suerte, por tick. */
+export const PROB_IMITAR_POR_MIL = 55;
+
 // --- Las escalas de los sentidos -------------------------------------------
 //
 // Los sentidos salen entre -1 y 1, y estos números dicen qué cuenta como

@@ -39,8 +39,14 @@
  * suena y lo que hay rascado. Es lo único del mundo que puede acabar
  * significando algo, así que un mundo guardado sin eso perdería justo lo que
  * más valdría la pena conservar. Sin migración, por lo mismo de siempre.
+ *
+ * v7: llegan los cerebros. Cada cuerpo guarda su capa oculta, los pesos de
+ * salida que ha ido aprendiendo, las dos trazas y su bienestar de antes. Son 714
+ * decimales por bicho y no son negociables: **lo que un bicho ha aprendido es
+ * ese bicho**, y un mundo que volviera con los mismos cuerpos y ninguno de sus
+ * hábitos no sería el mismo mundo. Sin migración, por lo mismo de siempre.
  */
-export const VERSION_ESQUEMA = 6;
+export const VERSION_ESQUEMA = 7;
 
 /** Marca al principio del archivo, para no intentar abrir cualquier cosa. */
 export const MARCA_ARCHIVO = 0x484f4f4b; // "HOOK"

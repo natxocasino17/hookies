@@ -647,7 +647,94 @@ medirse, que es en el navegador con el Worker de la fase 5, no aquí.
 
 ---
 
-## Fase 4 — Cerebros
+## Fase 4 — Cerebros — EN CURSO, **el criterio 1 no se cumple**
+
+### Dónde está esto ahora mismo, sin adornos
+
+El cerebro está construido y conectado: 24 sentidos entran, 64 neuronas ocultas
+con recurrencia e inercia piensan, salen los nueve números de los cinco verbos.
+Los pesos vienen del genoma —un átomo, un peso—, la capa de salida aprende en
+vida con la única recompensa que existe, y hay imitación entre vecinos.
+
+**Y aun así los cerebros lo hacen peor que tirar los dados.** Medido en la
+semilla 7 a 2.500 ticks: con cerebro la población hace un pico de 8 criaturas y
+con el control aleatorio hace 39. El criterio 1 de la fase dice que la esperanza
+de vida con cerebros tiene que superar a la del control, y hoy no lo hace.
+
+Eso es un resultado nulo y se deja escrito como tal (CLAUDE.md §1.6). Lo que
+sigue es lo que se ha encontrado por el camino, que no es poco.
+
+### Cuatro fallos de verdad, los cuatro cazados midiendo
+
+**1. El tanh estaba saturado.** Con ~40 entradas de peso hasta 1,2 y signos al
+azar, la suma antes del tanh se iba a ±7. Las nueve salidas salían clavadas en
++1 o -1, sin un solo valor intermedio: un interruptor binario en vez de un
+cerebro. Arreglado repartiendo cada suma entre la raíz de cuántas cosas se
+suman, que es lo que mantiene la suma donde el tanh todavía distingue.
+
+**2. Un premio fantasma en el primer tick de vida.** El bienestar arrancaba en
+cero y el cuerpo nacía con 120 de energía, así que la primera recompensa que veía
+el aprendizaje era **+120** y lanzaba todos los pesos contra su tope. Cada
+cerebro nacía ya deformado. Arreglado estrenando el cerebro después de darle su
+energía al cuerpo, no antes.
+
+**3. El aprendizaje apagaba a los bichos.** Estar vivo cuesta, así que el cambio
+de energía es negativo casi todos los ticks: el aprendizaje se pasaba la vida
+castigando lo que el bicho estuviera haciendo, fuera lo que fuera. Medido
+apagando el aprendizaje del todo, las tasas de acción saltaron del 2,2 % al
+20,6 %, y eso señaló al culpable sin lugar a dudas. Dos arreglos: la recompensa
+es ahora cuánto mejor le va **de lo que le suele ir** (que es lo que hace la
+dopamina, y no añade ninguna recompensa nueva), y la tasa de aprendizaje bajó cien
+veces — movía un peso 0,21 por tick sobre un rango de ±1,2, o sea que en quince
+ticks lo tenía contra el tope.
+
+**4. El gordo: todos los cerebros eran una sola neurona repetida.** El genoma se
+construía repitiendo en bucle la cadena del ciclo autocatalítico. Un ciclo tiene
+tres o cuatro átomos y los sentidos son veinticuatro, que es múltiplo de los dos,
+así que **la fila de pesos de cada neurona salía idéntica a la de todas las
+demás**. Medido: dos neuronas cualesquiera compartían el **92,9 %** de sus pesos
+cuando por azar sería el 16,7 %. Un cerebro de sesenta y cuatro neuronas era una
+neurona repetida sesenta y cuatro veces, y con eso no se puede calcular nada.
+
+Arreglado usando la cadena como **semilla de un generador** en vez de repetirla.
+No mete ni una pizca de azar de más: el mismo ciclo da exactamente el mismo
+genoma y dos ciclos distintos dan genomas que no se parecen en nada, así que
+sigue siendo la química la que decide qué cuerpo sale. Tras el arreglo, dos
+neuronas comparten el 16,8 % — exactamente lo que predice el azar.
+
+### La lección de método, que vale más que los cuatro arreglos
+
+Cinco veces seguidas calibré los umbrales de los verbos sobre la población
+equivocada, y cinco veces el mundo real dio números que no tenían nada que ver:
+
+| dónde medí | qué salió en el mundo |
+|---|---|
+| cerebros de un mundo agonizante | dos cerebros repetidos mil veces |
+| genomas al azar, sentidos al azar | 1,3 % de acción contra el 35 % del control |
+| genomas al azar, sentidos reales | igual |
+| genomas al azar, sentidos reales fijos | igual |
+| **genomas reales del mundo que vive** | ya en el orden correcto |
+
+La moraleja, apuntada para no repetirla: **un banco de pruebas alimentado con
+datos inventados mide el banco, no el mundo**. Y hubo un momento en que el
+contador de señales decía 409 millones porque nunca se reiniciaba — un fallo que
+venía de la fase 3 y que su propio test no cazó porque le bastaba con que fuera
+mayor que cero.
+
+### Lo que queda por probar
+
+Los umbrales siguen sin cuadrar del todo (50 % de movimiento contra el 35 % del
+control) y la población sigue sin arrancar. Los sitios donde mirar, por orden:
+
+1. **Que solo aprenda la capa de salida.** El instinto —la capa oculta y su
+   recurrencia— no cambia en toda la vida. Puede que no dé para tanto.
+2. **La resolución de los pesos.** Un átomo son seis valores posibles. Es basto.
+3. **El coste de pensar y de actuar**, que en una economía tan justa como esta
+   puede estar comiéndose el margen entero.
+
+---
+
+## Fase 4 — Cerebros (el plan original)
 
 **Se construye**
 

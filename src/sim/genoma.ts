@@ -105,6 +105,10 @@ export function tinteDelGenoma(genoma: Uint8Array, base: number): number {
  * sin adornos: **es la parte menos emergente de todo el proyecto**. Sin él, todos
  * los cuerpos nacidos del mismo ciclo serían clones exactos y no habría nada que
  * seleccionar.
+ *
+ * La cadena se usa como semilla de un generador y no se repite en bucle. El
+ * porqué está en el cuerpo de la función, y es la diferencia entre un cerebro y
+ * una sola neurona repetida sesenta y cuatro veces.
  */
 export function genomaDesdeLaCadena(
   destino: Uint8Array,
@@ -112,11 +116,33 @@ export function genomaDesdeLaCadena(
   atomosDelCiclo: number[],
   rng: EstadoRng,
 ): void {
-  const largo = atomosDelCiclo.length;
+  // La cadena se usa como SEMILLA de un generador, no se repite en bucle.
+  //
+  // Repetirla en bucle era lo que había antes y estaba roto de una forma que no
+  // se veía leyendo el código. Un ciclo autocatalítico tiene tres o cuatro
+  // átomos, y los sentidos son veinticuatro, que es múltiplo de los dos: al
+  // repetir la cadena, **la fila de pesos de cada neurona salía idéntica a la de
+  // todas las demás**. Medido: dos neuronas cualesquiera compartían el 92,9 % de
+  // sus pesos, cuando por azar sería el 16,7 %. Un cerebro de treinta y cinco
+  // neuronas era en realidad una neurona repetida treinta y cinco veces, y con
+  // eso no se puede calcular nada.
+  //
+  // Esto no mete ni una pizca de azar de más: **la semilla es la cadena**, así
+  // que el mismo ciclo da exactamente el mismo genoma, y dos ciclos distintos dan
+  // genomas que no se parecen en nada. Sigue siendo la química la que decide qué
+  // cuerpo sale, que es lo que importa; lo que cambia es que ahora el cuerpo que
+  // sale puede usar todas sus neuronas.
+  let semilla = 0x9e3779b9;
+  for (let i = 0; i < atomosDelCiclo.length; i++) {
+    semilla = (Math.imul(semilla ^ atomosDelCiclo[i]!, 0x85ebca6b) + 0x165667b1) >>> 0;
+  }
+
   for (let i = 0; i < MAX_CADENA_GENOMA; i++) {
-    let atomo = atomosDelCiclo[i % largo]!;
-    // Una errata cada tanto, para que dos cuerpos del mismo ciclo no sean
-    // clones. La tasa es la misma que la de copia entre generaciones.
+    // Un paso del generador por átomo. Determinista y sin periodo corto.
+    semilla = (Math.imul(semilla ^ (semilla >>> 15), 0x2545f491) + 0x9e3779b9) >>> 0;
+    let atomo = (semilla >>> 13) % N_TIPOS_ATOMO;
+    // Y una errata de vez en cuando con el azar del mundo, para que dos cuerpos
+    // salidos del MISMO ciclo no sean clones exactos el uno del otro.
     if (siguienteEntero(rng, 10000) < ERRATA_POR_DIEZ_MIL * 40) {
       atomo = siguienteEntero(rng, N_TIPOS_ATOMO);
     }

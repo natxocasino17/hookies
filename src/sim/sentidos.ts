@@ -119,7 +119,11 @@ function aplastar(x: number): number {
  * especificadas al bit por el estándar. No hay nada aquí que pueda dar distinto
  * en dos navegadores.
  */
-function marcoLocal(geo: Geometria, celda: number, salida: Float64Array): void {
+export function marcoLocalDeCelda(
+  geo: Geometria,
+  celda: number,
+  salida: Float64Array<ArrayBufferLike>,
+): void {
   const ax = geo.centro[celda * 3]!;
   const ay = geo.centro[celda * 3 + 1]!;
   const az = geo.centro[celda * 3 + 2]!;
@@ -185,7 +189,7 @@ export function sentir(
   geo: Geometria,
   c: number,
   salida: Float32Array,
-  marco = new Float64Array(6),
+  marco: Float64Array<ArrayBufferLike> = new Float64Array(6),
 ): void {
   const celda = estado.criaturaCelda[c]!;
   const base = c * MAX_CADENA_GENOMA;
@@ -215,7 +219,7 @@ export function sentir(
   // Los dos se calculan igual: se mira cuánto hay en cada vecina de más que en
   // la propia y se suma tirando hacia donde está esa vecina. Lo que sale es una
   // flecha. Nadie dice qué hacer con ella.
-  marcoLocal(geo, celda, marco);
+  marcoLocalDeCelda(geo, celda, marco);
   const aquiComida = comidaEn(estado, celda);
   const aquiCuerpos = cuerposEn(estado, celda);
   let olfatoU = 0;

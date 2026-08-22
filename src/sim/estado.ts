@@ -27,7 +27,10 @@ import {
   NIVEL_SUBDIVISION,
   SEMILLA_POR_DEFECTO,
   TEMP_INICIAL,
+  OCULTAS_EN_MEMORIA,
 } from './constants.js';
+import { N_SALIDAS_CEREBRO, VERBOS } from './verbos.js';
+import { N_SENTIDOS } from './sentidos.js';
 import { crearRng, RNG_PALABRAS, type EstadoRng } from './rng.js';
 import { MARCA_ARCHIVO, migrar, VERSION_ESQUEMA } from './esquema.js';
 import { celdasDelNivel, construirGeometria, type Geometria } from './geodesica.js';
@@ -196,6 +199,55 @@ export interface EstadoMundo {
   /** Genoma de cada criatura: MAX_CADENA_GENOMA átomos seguidos por criatura. */
   criaturaGenoma: Uint8Array;
 
+  // --- Lo que el cerebro necesita para funcionar y para aprender -------------
+  //
+  // Todo esto va al archivo guardado, y no es discutible: **lo que un bicho ha
+  // aprendido en su vida es ese bicho**. Un mundo que se guardara sin esto
+  // volvería con los mismos cuerpos y ninguno de sus hábitos.
+
+  /**
+   * Lo que las neuronas ocultas tienen encendido ahora mismo.
+   *
+   * Se lee a sí mismo del tick anterior: eso es la recurrencia, y es lo que
+   * permite que un cuerpo haga algo que dependa de lo que pasó antes y no solo
+   * de lo que tiene delante.
+   */
+  criaturaOculta: Float32Array;
+
+  /**
+   * Los pesos de la capa de salida, que son los que cambian en vida.
+   *
+   * Salen copiados del genoma al nacer y a partir de ahí se van moviendo con lo
+   * que le pase. Los del genoma no se tocan — son lo que heredarán sus crías —
+   * así que **lo aprendido en vida no se hereda**, solo lo que traía escrito.
+   */
+  criaturaPesosSalida: Float32Array;
+
+  /** Qué neuronas y qué acciones venían estando activas, para saber a qué premiar. */
+  criaturaTrazaOculta: Float32Array;
+  criaturaTrazaSalida: Float32Array;
+
+  /** Energía menos dolor del tick pasado. La recompensa es cuánto ha cambiado. */
+  criaturaBienestar: Float32Array;
+
+  /**
+   * Lo que a este cuerpo le viene pasando últimamente, de media.
+   *
+   * Sin esto el aprendizaje no funciona, y costó encontrarlo. La recompensa es
+   * cuánto ha cambiado la energía menos el dolor, y **el metabolismo hace que
+   * ese cambio sea negativo casi todos los ticks**: estar vivo cuesta. Así que
+   * el aprendizaje se pasaba la vida castigando lo que el bicho estuviera
+   * haciendo, fuera lo que fuera, hasta apagarlo entero. Medido: los cerebros
+   * acababan moviéndose el 1,3 % de los ticks y mordiendo el 0,9 %, contra el 35
+   * y el 30 % del control. Catatónicos.
+   *
+   * Lo que se premia ahora es que le vaya **mejor de lo que le suele ir**. Sigue
+   * siendo energía menos dolor y nada más (§1.5): no se ha añadido ninguna
+   * recompensa nueva, solo se ha quitado el suelo que la hacía siempre negativa.
+   * Es lo mismo que hace la dopamina, que no señala el premio sino la sorpresa.
+   */
+  criaturaEsperado: Float32Array;
+
   /**
    * Quién está en cada celda, para no tener que recorrer todas las ranuras cada
    * vez que alguien muerde.
@@ -253,9 +305,36 @@ export interface EstadoMundo {
   cruzamientosEsteTick: number;
   muertesEsteTick: number;
   senalesEsteTick: number;
+  /** Cuántos cuerpos le copiaron pesos a un vecino con suerte en el último tick. */
+  imitacionesEsteTick: number;
+
+  /**
+   * Cuántas veces se hizo cada verbo en el último tick, en el orden de VERBOS.
+   *
+   * Es telemetría y no estado: se pone a cero cada tick y no la lee nadie dentro
+   * del mundo, así que no va al archivo. Existe porque sin ella no hay forma de
+   * saber si un cerebro está actuando tanto como el control o el triple, y esa
+   * diferencia sola puede decidir si una población vive o se extingue — pasó, y
+   * costó dos días de medir mundos muertos antes de mirarlo desde dentro.
+   */
+  verbosEsteTick: Int32Array;
   edadMediaDeMuerte: number;
   /** Si alguna vez se alcanzó el tope de seguridad. Nunca se recorta en silencio. */
   topeDePoblacionTocado: boolean;
+
+  /**
+   * Si los cuerpos deciden con su cerebro o tiran los dados.
+   *
+   * **Esto es un control de experimento, no una perilla del juego.** El criterio
+   * 1 de la fase 4 es que la esperanza de vida con cerebros supere a la de los
+   * mismos bichos con los verbos al azar, en la misma semilla. Sin poder correr
+   * las dos cosas no hay forma de saber si el cerebro sirve de algo, y "se mueven
+   * con sentido" sería una impresión y no un dato.
+   *
+   * Los mundos que se miran van siempre con cerebro. El laboratorio es el único
+   * sitio que lo apaga, y cuando lo apaga lo dice.
+   */
+  conCerebro: boolean;
 
   /**
    * Memoria de trabajo del arrastre por el viento.
@@ -284,6 +363,25 @@ export interface EstadoMundo {
    * correría dependería del orden en que están numeradas las celdas.
    */
   copiaSenal: Float32Array;
+  /**
+   * Memoria de trabajo de la capa oculta.
+   *
+   * Por lo mismo que la del viento y la de la señal: calcular las ocultas nuevas
+   * necesita las viejas enteras. Sin esto, la neurona 5 leería a la 3 ya
+   * actualizada y a la 7 sin actualizar, y el cerebro dependería del orden en que
+   * están numeradas sus propias neuronas.
+   */
+  copiaOculta: Float32Array;
+  /**
+   * Sitios donde el cerebro deja lo que siente y lo que decide mientras piensa.
+   *
+   * Se reutilizan de un bicho al siguiente en vez de crear vectores nuevos:
+   * hacerlo bien son tres arrays por criatura y por tick, o sea millones de
+   * objetos por minuto para que el recolector de basura los tire enseguida.
+   */
+  sentidosDeTrabajo: Float32Array;
+  salidaDeTrabajo: Float32Array;
+  marcoDeTrabajo: Float64Array;
   copiaDecimales: Float32Array;
 
   /** Contabilidad de energía: cuánta entró (sol) y cuánta salió (disipación). */
@@ -293,6 +391,15 @@ export interface EstadoMundo {
 
 /** Bytes de cabecera antes de los datos de las celdas. */
 const BYTES_CABECERA = 72;
+
+/**
+ * Bit que se enciende en el hueco del nivel cuando el mundo va sin cerebro.
+ *
+ * El nivel es 3 o 4, así que los bits de arriba de ese número están libres y no
+ * hace falta gastar cuatro bytes más de cabecera. Va aquí y no suelto porque un
+ * mundo de control tiene que poder guardarse y volver siendo de control.
+ */
+const BANDERA_SIN_CEREBRO = 0x10000;
 
 /** Un índice por celda recién estrenado: nadie en ninguna parte. */
 function cabezaVacia(nCeldas: number): Int32Array {
@@ -365,8 +472,23 @@ const BYTES_POR_PLANTA = 16 + GENES_PLANTA;
  */
 const CAMPOS_POR_CRIATURA = 7;
 const BYTES_CAMPOS_CRIATURA = CAMPOS_POR_CRIATURA * 4;
+
+/**
+ * Decimales que guarda el cerebro de cada criatura: su capa oculta, sus pesos de
+ * salida aprendidos, las dos trazas y su bienestar de antes.
+ *
+ * Va derivado y no escrito a mano por la misma razón que el de arriba, que ya se
+ * cobró una pieza. Y sí, es mucho: 714 decimales por bicho, 8,6 MB con el tope
+ * en tres mil. Se guarda igualmente porque **lo que un bicho ha aprendido es ese
+ * bicho**, y un mundo que volviera con los mismos cuerpos y ninguno de sus
+ * hábitos no sería el mismo mundo. Lo que hay que arreglar antes de la fase 6 es
+ * escribir solo las ranuras ocupadas (RIESGOS §14), no dejar de guardar esto.
+ */
+const DECIMALES_DE_CEREBRO =
+  OCULTAS_EN_MEMORIA + OCULTAS_EN_MEMORIA * N_SALIDAS_CEREBRO + OCULTAS_EN_MEMORIA + N_SALIDAS_CEREBRO + 2;
+const BYTES_DE_CEREBRO = DECIMALES_DE_CEREBRO * 4;
 /** Bytes por criatura: sus campos más su genoma. */
-const BYTES_POR_CRIATURA = BYTES_CAMPOS_CRIATURA + MAX_CADENA_GENOMA;
+const BYTES_POR_CRIATURA = BYTES_CAMPOS_CRIATURA + MAX_CADENA_GENOMA + BYTES_DE_CEREBRO;
 /**
  * Bytes por celda de las cosas de los cuerpos: carroña y constancia del ciclo en
  * enteros, más los cuatro números de la señal y los cuatro de la marca.
@@ -376,9 +498,17 @@ const BYTES_CUERPOS_POR_CELDA = 8 + 4 * 4 + 4 * 4;
 const BYTES_SOPA_POR_CELDA = N_TIPOS_ATOMO * 4 + N_DIMEROS * 4 + TOP_N_MOLECULAS * 8;
 
 /** Crea un mundo nuevo. Determinista: la misma semilla da siempre el mismo mundo. */
+/**
+ * Crea un mundo nuevo.
+ *
+ * `conCerebro` en falso es el control del experimento de la fase 4, y solo lo
+ * usa el laboratorio: los mismos bichos con los mismos genes tirando los dados
+ * en vez de decidir. Ver `EstadoMundo.conCerebro`.
+ */
 export function crearEstado(
   semilla: number = SEMILLA_POR_DEFECTO,
   nivel: number = NIVEL_SUBDIVISION,
+  conCerebro = true,
 ): EstadoMundo {
   const geo = construirGeometria(nivel);
   const materia = new Int32Array(geo.nCeldas);
@@ -440,6 +570,12 @@ export function crearEstado(
     criaturaLinaje: new Int32Array(MAX_CRIATURAS),
     criaturaGameto: new Int32Array(MAX_CRIATURAS),
     criaturaGenoma: new Uint8Array(MAX_CRIATURAS * MAX_CADENA_GENOMA),
+    criaturaOculta: new Float32Array(MAX_CRIATURAS * OCULTAS_EN_MEMORIA),
+    criaturaPesosSalida: new Float32Array(MAX_CRIATURAS * OCULTAS_EN_MEMORIA * N_SALIDAS_CEREBRO),
+    criaturaTrazaOculta: new Float32Array(MAX_CRIATURAS * OCULTAS_EN_MEMORIA),
+    criaturaTrazaSalida: new Float32Array(MAX_CRIATURAS * N_SALIDAS_CEREBRO),
+    criaturaBienestar: new Float32Array(MAX_CRIATURAS),
+    criaturaEsperado: new Float32Array(MAX_CRIATURAS),
     cabezaEnCelda: cabezaVacia(geo.nCeldas),
     siguienteEnCelda: listaVacia(),
     cursorCriatura: 0,
@@ -453,10 +589,17 @@ export function crearEstado(
     cruzamientosEsteTick: 0,
     muertesEsteTick: 0,
     senalesEsteTick: 0,
+    imitacionesEsteTick: 0,
+    verbosEsteTick: new Int32Array(VERBOS.length),
     edadMediaDeMuerte: 0,
     topeDePoblacionTocado: false,
+    conCerebro,
     copiaEnteros: new Int32Array(geo.nCeldas),
     copiaSenal: new Float32Array(geo.nCeldas * 4),
+    copiaOculta: new Float32Array(OCULTAS_EN_MEMORIA),
+    sentidosDeTrabajo: new Float32Array(N_SENTIDOS),
+    salidaDeTrabajo: new Float32Array(N_SALIDAS_CEREBRO),
+    marcoDeTrabajo: new Float64Array(6),
     copiaDecimales: new Float32Array(geo.nCeldas),
     energiaEntrada: 0,
     energiaSalida: 0,
@@ -505,7 +648,7 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   // años, un solo entero de 32 bits se quedaría corto.
   vista.setUint32(12, Math.floor(estado.tick / 4294967296) >>> 0, true);
   vista.setUint32(16, estado.tick >>> 0, true);
-  vista.setUint32(20, estado.nivel, true);
+  vista.setUint32(20, estado.nivel | (estado.conCerebro ? 0 : BANDERA_SIN_CEREBRO), true);
   vista.setUint32(24, n, true);
   for (let i = 0; i < RNG_PALABRAS; i++) {
     vista.setUint32(28 + i * 4, estado.rng[i]!, true);
@@ -565,7 +708,28 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   }
   const temperaturas = cuerpos + MAX_CRIATURAS * BYTES_CAMPOS_CRIATURA;
   bytes.set(estado.criaturaGenoma, temperaturas);
-  const celdasCuerpo = temperaturas + MAX_CRIATURAS * MAX_CADENA_GENOMA;
+  const cerebros = temperaturas + MAX_CRIATURAS * MAX_CADENA_GENOMA;
+  for (let c = 0; c < MAX_CRIATURAS; c++) {
+    let p = cerebros + c * BYTES_DE_CEREBRO;
+    for (let i = 0; i < OCULTAS_EN_MEMORIA; i++, p += 4) {
+      vista.setFloat32(p, estado.criaturaOculta[c * OCULTAS_EN_MEMORIA + i]!, true);
+    }
+    const nPesos = OCULTAS_EN_MEMORIA * N_SALIDAS_CEREBRO;
+    for (let i = 0; i < nPesos; i++, p += 4) {
+      vista.setFloat32(p, estado.criaturaPesosSalida[c * nPesos + i]!, true);
+    }
+    for (let i = 0; i < OCULTAS_EN_MEMORIA; i++, p += 4) {
+      vista.setFloat32(p, estado.criaturaTrazaOculta[c * OCULTAS_EN_MEMORIA + i]!, true);
+    }
+    for (let i = 0; i < N_SALIDAS_CEREBRO; i++, p += 4) {
+      vista.setFloat32(p, estado.criaturaTrazaSalida[c * N_SALIDAS_CEREBRO + i]!, true);
+    }
+    vista.setFloat32(p, estado.criaturaBienestar[c]!, true);
+    p += 4;
+    vista.setFloat32(p, estado.criaturaEsperado[c]!, true);
+  }
+
+  const celdasCuerpo = cerebros + MAX_CRIATURAS * BYTES_DE_CEREBRO;
   for (let i = 0; i < n; i++) {
     vista.setInt32(celdasCuerpo + i * 4, estado.carrona[i]!, true);
     vista.setInt32(celdasCuerpo + n * 4 + i * 4, estado.constanciaDelCiclo[i]!, true);
@@ -605,7 +769,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
 
   const tickAlto = vista.getUint32(12, true);
   const tickBajo = vista.getUint32(16, true);
-  const nivel = vista.getUint32(20, true);
+  const nivel = vista.getUint32(20, true) & ~BANDERA_SIN_CEREBRO;
   const n = vista.getUint32(24, true);
 
   if (n !== celdasDelNivel(nivel)) {
@@ -713,7 +877,34 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     genomaCriaturasEn,
     genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA,
   );
-  const celdasCuerpoEn = genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA;
+  const cerebrosEn = genomaCriaturasEn + MAX_CRIATURAS * MAX_CADENA_GENOMA;
+  const nPesosSalida = OCULTAS_EN_MEMORIA * N_SALIDAS_CEREBRO;
+  const criaturaOculta = new Float32Array(MAX_CRIATURAS * OCULTAS_EN_MEMORIA);
+  const criaturaPesosSalida = new Float32Array(MAX_CRIATURAS * nPesosSalida);
+  const criaturaTrazaOculta = new Float32Array(MAX_CRIATURAS * OCULTAS_EN_MEMORIA);
+  const criaturaTrazaSalida = new Float32Array(MAX_CRIATURAS * N_SALIDAS_CEREBRO);
+  const criaturaBienestar = new Float32Array(MAX_CRIATURAS);
+  const criaturaEsperado = new Float32Array(MAX_CRIATURAS);
+  for (let c = 0; c < MAX_CRIATURAS; c++) {
+    let p = cerebrosEn + c * BYTES_DE_CEREBRO;
+    for (let i = 0; i < OCULTAS_EN_MEMORIA; i++, p += 4) {
+      criaturaOculta[c * OCULTAS_EN_MEMORIA + i] = vista.getFloat32(p, true);
+    }
+    for (let i = 0; i < nPesosSalida; i++, p += 4) {
+      criaturaPesosSalida[c * nPesosSalida + i] = vista.getFloat32(p, true);
+    }
+    for (let i = 0; i < OCULTAS_EN_MEMORIA; i++, p += 4) {
+      criaturaTrazaOculta[c * OCULTAS_EN_MEMORIA + i] = vista.getFloat32(p, true);
+    }
+    for (let i = 0; i < N_SALIDAS_CEREBRO; i++, p += 4) {
+      criaturaTrazaSalida[c * N_SALIDAS_CEREBRO + i] = vista.getFloat32(p, true);
+    }
+    criaturaBienestar[c] = vista.getFloat32(p, true);
+    p += 4;
+    criaturaEsperado[c] = vista.getFloat32(p, true);
+  }
+
+  const celdasCuerpoEn = cerebrosEn + MAX_CRIATURAS * BYTES_DE_CEREBRO;
   const carrona = new Int32Array(n);
   const constanciaDelCiclo = new Int32Array(n);
   const senalAire = new Float32Array(n * 4);
@@ -773,6 +964,12 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     criaturaLinaje,
     criaturaGameto,
     criaturaGenoma,
+    criaturaOculta,
+    criaturaPesosSalida,
+    criaturaTrazaOculta,
+    criaturaTrazaSalida,
+    criaturaBienestar,
+    criaturaEsperado,
     cabezaEnCelda: cabezaVacia(n),
     siguienteEnCelda: listaVacia(),
     cursorCriatura: vista.getUint32(64, true),
@@ -786,10 +983,17 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     cruzamientosEsteTick: 0,
     muertesEsteTick: 0,
     senalesEsteTick: 0,
+    imitacionesEsteTick: 0,
+    verbosEsteTick: new Int32Array(VERBOS.length),
     edadMediaDeMuerte: 0,
     topeDePoblacionTocado: false,
+    conCerebro: (vista.getUint32(20, true) & BANDERA_SIN_CEREBRO) === 0,
     copiaEnteros: new Int32Array(n),
     copiaSenal: new Float32Array(n * 4),
+    copiaOculta: new Float32Array(OCULTAS_EN_MEMORIA),
+    sentidosDeTrabajo: new Float32Array(N_SENTIDOS),
+    salidaDeTrabajo: new Float32Array(N_SALIDAS_CEREBRO),
+    marcoDeTrabajo: new Float64Array(6),
     copiaDecimales: new Float32Array(n),
     energiaEntrada: vista.getFloat64(44, true),
     energiaSalida: vista.getFloat64(52, true),

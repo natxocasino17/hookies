@@ -200,10 +200,16 @@ describe('el canal', () => {
   });
 
   it('emitir y rascar dejan rastro de verdad en un mundo que corre', () => {
-    // Hasta esta sesión emitir costaba energía y no dejaba nada en ninguna
-    // parte: el canal era físicamente incapaz de llevar información. Esto
-    // comprueba que ya no es así.
-    const estado = crearEstado(1234);
+    // Hasta la fase 3 emitir costaba energía y no dejaba nada en ninguna parte:
+    // el canal era físicamente incapaz de llevar información. Esto comprueba que
+    // ya no es así.
+    //
+    // Va sobre el mundo de control, el de los verbos al azar, y a propósito: lo
+    // que se comprueba aquí es la **física del canal**, no el cerebro. Con
+    // cerebro la población todavía no arranca (fase 4, criterio 1 sin cumplir),
+    // así que no habría nadie emitiendo y este test estaría midiendo eso en vez
+    // de lo que quiere medir.
+    const estado = crearEstado(1234, 4, false);
     const geo = geometriaDe(estado);
     for (let i = 0; i < 3000; i++) avanzarUnTick(estado, geo);
 
