@@ -721,6 +721,73 @@ contador de señales decía 409 millones porque nunca se reiniciaba — un fallo
 venía de la fase 3 y que su propio test no cazó porque le bastaba con que fuera
 mayor que cero.
 
+### Y al final el problema no era el cerebro: era que saber no sirve de nada
+
+El control bueno tardó en aparecer. Comparar cerebros contra verbos al azar tiene
+una trampa: los dados están **obligados** a moverse el 35 % de los ticks, así que
+la comparación mide cuánto te mueves y no si piensas. El control que hacía falta
+es **el mismo cerebro con los ojos tapados**: mismo genoma, mismos umbrales,
+mismo temblor, mismos costes, y lo único que cambia es que no se entera de nada.
+Cualquier diferencia es información usada y no puede ser otra cosa.
+
+Y el resultado fue el contrario del esperado:
+
+| semilla | modo | pico | come/tick | mover | morder |
+|---|---|---|---|---|---|
+| 7 | ve | 12 | 0,84 | 62 % | 54 % |
+| 7 | **ojos tapados** | **456** | **8,66** | **2 %** | ~100 % |
+| 1234 | ve | 107 | 2,14 | 23 % | 35 % |
+
+**El ciego gana por goleada**, y se ve exactamente por qué: converge a quedarse
+quieto y masticar sin parar. El que ve se mueve el 62 % del tiempo y come diez
+veces menos.
+
+O sea que en este mundo **tener información es activamente malo**, porque lo
+único que hace es que te muevas, y moverse no compensa jamás. Y eso, mirándolo,
+resultó ser dos cosas encadenadas:
+
+**Una:** moverse costaba 1,4 por paso, que con un cuerpo medio son 2,1 — más de
+lo que se come en un tick entero (1,55). Buscar comida era ruinoso por
+construcción y ningún cerebro podía aprender a hacerlo por listo que fuera. No se
+vio antes porque los dados se mueven un 35 % fijo pase lo que pase, y el mundo
+quedó equilibrado alrededor de esa cifra. Bajado a 0,45.
+
+**Dos, y es la de fondo:** una celda puede tener doce plantas, cada una crece 3
+por tick y un bocado son 6. Una sola celda regenera 36 por tick y un bicho come
+6. **Una celda da de comer para siempre a quien se plante encima.** La jugada
+ganadora del mundo es no moverse nunca, y eso es exactamente lo que el cerebro
+ciego descubrió solo.
+
+Un mundo cuya estrategia óptima es sentarse a masticar es un mundo de ermitaños,
+y la visión dice con todas las letras que entre dos diseños gana el que produzca
+más interacción, porque un bicho que se las arregla solo no tiene nada que ver
+con otro.
+
+### Lo que hay que construir, y que está en el plan desde el principio
+
+Releyendo el propio plan de la fase 4 aparece el apartado que me había saltado, y
+es el que resuelve todo esto de raíz — **"Presión para comunicar, que es el
+corazón del juego"**:
+
+- **Comida enterrada rica**, que solo se huele estando encima de la celda, y como
+  fuente principal de calorías. Eso hace que haya que buscar, que haya algo que
+  saber y que sepa uno lo que otro no sabe.
+- **Peligro letal que llega desde fuera del alcance visual de la mayoría**, y a
+  menudo. Eso hace que el que lo vio primero tenga algo que decir.
+- **Vida solitaria con esperanza claramente peor que la acompañada.**
+
+Sin esas tres cosas, este mundo no tiene ningún motivo para moverse, ninguno para
+mirar y ninguno para hablar, y **el cerebro no puede ganar sabiendo porque saber
+no vale nada**. No es un fallo de la red: es que le he pedido que resuelva un
+problema que no existe.
+
+Eso es lo siguiente, y es lo que faltaba de verdad.
+
+**Aviso:** bajar `COSTE_DE_MOVERSE` cambia el mundo también para la fase 3, así
+que sus números medidos (población, especies, duración de linaje) hay que
+volver a tomarlos. Masa y determinismo no dependen del equilibrio y siguen en
+verde.
+
 ### Lo que queda por probar
 
 Los umbrales siguen sin cuadrar del todo (50 % de movimiento contra el 35 % del

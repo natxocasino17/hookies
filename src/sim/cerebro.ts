@@ -51,6 +51,7 @@ import {
   OCULTAS_MINIMAS,
   PERMANENCIA_TRAZA_POR_MIL,
   RANGO_DE_PESO,
+  TEMBLOR_DE_LA_SALIDA,
   TOPE_DE_PESO_APRENDIDO,
 } from './constants.js';
 import type { EstadoMundo } from './estado.js';
@@ -59,6 +60,7 @@ import { VENTANA_DE_TINTE } from './constants.js';
 import { dTanh } from './math.js';
 import { N_SENTIDOS } from './sentidos.js';
 import { N_SALIDAS_CEREBRO } from './verbos.js';
+import { siguienteDecimal } from './rng.js';
 
 /**
  * Dónde empiezan los pesos dentro del genoma: justo después de los rasgos y del
@@ -215,6 +217,7 @@ export function pensar(
       antes[h]! * INERCIA_DE_NEURONA + dTanh(suma) * (1 - INERCIA_DE_NEURONA);
   }
 
+  const traza = c * N_SALIDAS_CEREBRO;
   for (let o = 0; o < N_SALIDAS_CEREBRO; o++) {
     let deDentro = 0;
     for (let h = 0; h < activas; h++) {
@@ -222,8 +225,19 @@ export function pensar(
         estado.criaturaPesosSalida[pesosSalida + h * N_SALIDAS_CEREBRO + o]! *
         estado.criaturaOculta[oculta + h]!;
     }
+    // El temblor: cada salida sale movida un poco de donde el cerebro la puso.
+    // Es lo que hace que el bicho pruebe cosas, y sin probar cosas no hay nada
+    // que aprender (ver TEMBLOR_DE_LA_SALIDA). Se guarda **el temblor**, no la
+    // salida, porque lo que el aprendizaje tiene que reforzar es la desviación
+    // que salió bien, no lo que el bicho ya hacía de todas formas.
+    const tiembla = (siguienteDecimal(estado.rng) * 2 - 1) * TEMBLOR_DE_LA_SALIDA;
+    estado.criaturaTrazaSalida[traza + o] =
+      (estado.criaturaTrazaSalida[traza + o]! * PERMANENCIA_TRAZA_POR_MIL) / 1000 +
+      tiembla * (1 - PERMANENCIA_TRAZA_POR_MIL / 1000);
     salida[o] = dTanh(
-      pesoDelAtomo(g[base + DESDE_SESGOS + OCULTAS_EN_MEMORIA + o]!) + deDentro * escalaOculta,
+      pesoDelAtomo(g[base + DESDE_SESGOS + OCULTAS_EN_MEMORIA + o]!) +
+        deDentro * escalaOculta +
+        tiembla,
     );
   }
 }
@@ -288,16 +302,6 @@ export function aprender(estado: EstadoMundo, c: number, activas: number): void 
       if (w < -TOPE_DE_PESO_APRENDIDO) w = -TOPE_DE_PESO_APRENDIDO;
       estado.criaturaPesosSalida[i] = w;
     }
-  }
-}
-
-/** Guarda en la traza lo que el cerebro acaba de mandar hacer. */
-export function anotarLoHecho(estado: EstadoMundo, c: number, salida: Float32Array): void {
-  const t = c * N_SALIDAS_CEREBRO;
-  for (let o = 0; o < N_SALIDAS_CEREBRO; o++) {
-    estado.criaturaTrazaSalida[t + o] =
-      (estado.criaturaTrazaSalida[t + o]! * PERMANENCIA_TRAZA_POR_MIL) / 1000 +
-      salida[o]! * (1 - PERMANENCIA_TRAZA_POR_MIL / 1000);
   }
 }
 

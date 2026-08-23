@@ -318,6 +318,19 @@ export interface EstadoMundo {
    * costó dos días de medir mundos muertos antes de mirarlo desde dentro.
    */
   verbosEsteTick: Int32Array;
+
+  /**
+   * De qué se murieron los que murieron en el último tick: hambre, daño o vejez.
+   *
+   * Telemetría, como los verbos: se pone a cero cada tick y no va al archivo.
+   * Sin esto, "el mundo se extingue" es una observación; con esto es un
+   * diagnóstico.
+   */
+  muertesPorHambre: number;
+  muertesPorDano: number;
+  muertesPorVejez: number;
+  /** Energía comida y energía gastada en el último tick, sumando a todos. */
+  energiaComidaEsteTick: number;
   edadMediaDeMuerte: number;
   /** Si alguna vez se alcanzó el tope de seguridad. Nunca se recorta en silencio. */
   topeDePoblacionTocado: boolean;
@@ -335,6 +348,23 @@ export interface EstadoMundo {
    * sitio que lo apaga, y cuando lo apaga lo dice.
    */
   conCerebro: boolean;
+
+  /**
+   * El control bueno: el mismo cerebro, con los ojos tapados.
+   *
+   * Comparar cerebros contra verbos al azar tiene una trampa que costó dos días
+   * ver. Los dados están obligados a moverse el 35 % de los ticks, y en este
+   * mundo **moverse es ruinoso**: un paso cuesta 2,1 de energía y comer da 1,55
+   * por tick. Medido, subir el umbral de moverse hasta que los cerebros casi no
+   * se mueven da un pico de 559 criaturas contra las 39 de los dados. Eso no
+   * demuestra que el cerebro sea listo: demuestra que quedarse quieto gana.
+   *
+   * Con los ojos tapados todo es idéntico —mismo cerebro, mismos umbrales, mismo
+   * temblor, mismos costes, misma cantidad de movimiento— y lo único que cambia
+   * es que el cuerpo no se entera de lo que tiene alrededor. Cualquier diferencia
+   * que salga es **información usada**, y no puede ser otra cosa.
+   */
+  cerebroCiego: boolean;
 
   /**
    * Memoria de trabajo del arrastre por el viento.
@@ -400,6 +430,9 @@ const BYTES_CABECERA = 72;
  * mundo de control tiene que poder guardarse y volver siendo de control.
  */
 const BANDERA_SIN_CEREBRO = 0x10000;
+
+/** Y el que dice que el cerebro va con los ojos tapados. */
+const BANDERA_CEREBRO_CIEGO = 0x20000;
 
 /** Un índice por celda recién estrenado: nadie en ninguna parte. */
 function cabezaVacia(nCeldas: number): Int32Array {
@@ -509,6 +542,7 @@ export function crearEstado(
   semilla: number = SEMILLA_POR_DEFECTO,
   nivel: number = NIVEL_SUBDIVISION,
   conCerebro = true,
+  cerebroCiego = false,
 ): EstadoMundo {
   const geo = construirGeometria(nivel);
   const materia = new Int32Array(geo.nCeldas);
@@ -591,9 +625,14 @@ export function crearEstado(
     senalesEsteTick: 0,
     imitacionesEsteTick: 0,
     verbosEsteTick: new Int32Array(VERBOS.length),
+    muertesPorHambre: 0,
+    muertesPorDano: 0,
+    muertesPorVejez: 0,
+    energiaComidaEsteTick: 0,
     edadMediaDeMuerte: 0,
     topeDePoblacionTocado: false,
     conCerebro,
+    cerebroCiego,
     copiaEnteros: new Int32Array(geo.nCeldas),
     copiaSenal: new Float32Array(geo.nCeldas * 4),
     copiaOculta: new Float32Array(OCULTAS_EN_MEMORIA),
@@ -648,7 +687,13 @@ export function serializar(estado: EstadoMundo): Uint8Array {
   // años, un solo entero de 32 bits se quedaría corto.
   vista.setUint32(12, Math.floor(estado.tick / 4294967296) >>> 0, true);
   vista.setUint32(16, estado.tick >>> 0, true);
-  vista.setUint32(20, estado.nivel | (estado.conCerebro ? 0 : BANDERA_SIN_CEREBRO), true);
+  vista.setUint32(
+    20,
+    estado.nivel |
+      (estado.conCerebro ? 0 : BANDERA_SIN_CEREBRO) |
+      (estado.cerebroCiego ? BANDERA_CEREBRO_CIEGO : 0),
+    true,
+  );
   vista.setUint32(24, n, true);
   for (let i = 0; i < RNG_PALABRAS; i++) {
     vista.setUint32(28 + i * 4, estado.rng[i]!, true);
@@ -769,7 +814,7 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
 
   const tickAlto = vista.getUint32(12, true);
   const tickBajo = vista.getUint32(16, true);
-  const nivel = vista.getUint32(20, true) & ~BANDERA_SIN_CEREBRO;
+  const nivel = vista.getUint32(20, true) & ~(BANDERA_SIN_CEREBRO | BANDERA_CEREBRO_CIEGO);
   const n = vista.getUint32(24, true);
 
   if (n !== celdasDelNivel(nivel)) {
@@ -985,9 +1030,14 @@ export function deserializar(bytesEntrada: Uint8Array): EstadoMundo {
     senalesEsteTick: 0,
     imitacionesEsteTick: 0,
     verbosEsteTick: new Int32Array(VERBOS.length),
+    muertesPorHambre: 0,
+    muertesPorDano: 0,
+    muertesPorVejez: 0,
+    energiaComidaEsteTick: 0,
     edadMediaDeMuerte: 0,
     topeDePoblacionTocado: false,
     conCerebro: (vista.getUint32(20, true) & BANDERA_SIN_CEREBRO) === 0,
+    cerebroCiego: (vista.getUint32(20, true) & BANDERA_CEREBRO_CIEGO) !== 0,
     copiaEnteros: new Int32Array(n),
     copiaSenal: new Float32Array(n * 4),
     copiaOculta: new Float32Array(OCULTAS_EN_MEMORIA),

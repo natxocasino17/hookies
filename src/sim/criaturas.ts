@@ -93,7 +93,6 @@ import type { EstadoMundo } from './estado.js';
 import type { Geometria } from './geodesica.js';
 import { siguienteDecimal, siguienteEntero } from './rng.js';
 import {
-  anotarLoHecho,
   aprender,
   costeDePensar,
   estrenarCerebro,
@@ -290,6 +289,10 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
   // bastaba con que fuera mayor que cero.
   estado.senalesEsteTick = 0;
   estado.verbosEsteTick.fill(0);
+  estado.muertesPorHambre = 0;
+  estado.muertesPorDano = 0;
+  estado.muertesPorVejez = 0;
+  estado.energiaComidaEsteTick = 0;
 
   if (estado.tick % MIRAR_EL_PUENTE_CADA === 0) mirarElPuente(estado, geo);
 
@@ -336,8 +339,12 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
       // Pensar cuesta, y cuesta más cuantas más neuronas se tengan encendidas.
       estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! - costeDePensar(activas);
       sentir(estado, geo, c, estado.sentidosDeTrabajo, estado.marcoDeTrabajo);
+      // Con los ojos tapados, el cuerpo sigue teniendo el mismo cerebro, los
+      // mismos umbrales, el mismo temblor y los mismos costes — pero no se
+      // entera de nada de lo que pasa a su alrededor. Es el control que hacía
+      // falta y que tardé en encontrar (ver `EstadoMundo.cerebroCiego`).
+      if (estado.cerebroCiego) estado.sentidosDeTrabajo.fill(0);
       pensar(estado, c, estado.sentidosDeTrabajo, estado.salidaDeTrabajo, activas);
-      anotarLoHecho(estado, c, estado.salidaDeTrabajo);
       ejecutarLosVerbos(estado, geo, c, celda, tamano, estado.salidaDeTrabajo);
       celda = estado.criaturaCelda[c]!;
       aprender(estado, c, activas);
@@ -381,12 +388,15 @@ export function avanzarLasCriaturas(estado: EstadoMundo, geo: Geometria): void {
 
     // --- Morir ---------------------------------------------------------------
     const aguante = DANO_MORTAL * (AGUANTE_MINIMO + leerRasgo(genomas, base, RASGO_UMBRAL_DOLOR));
-    const seMuere =
-      estado.criaturaEnergia[c]! <= 0 ||
-      estado.criaturaDano[c]! >= aguante ||
-      estado.criaturaEdad[c]! > longevidadDe(genomas, base);
+    const porHambre = estado.criaturaEnergia[c]! <= 0;
+    const porDano = estado.criaturaDano[c]! >= aguante;
+    const porVejez = estado.criaturaEdad[c]! > longevidadDe(genomas, base);
+    const seMuere = porHambre || porDano || porVejez;
 
     if (seMuere) {
+      if (porHambre) estado.muertesPorHambre++;
+      else if (porDano) estado.muertesPorDano++;
+      else estado.muertesPorVejez++;
       sumaEdadMuerte += estado.criaturaEdad[c]!;
       morir(estado, c);
       continue;
@@ -645,6 +655,7 @@ function morder(estado: EstadoMundo, c: number, celda: number, base: number): vo
     estado.carrona[celda] = estado.carrona[celda]! - bocado;
     estado.criaturaMateria[c] = estado.criaturaMateria[c]! + bocado;
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! + bocado * ENERGIA_POR_BOCADO * eficacia;
+    estado.energiaComidaEsteTick += bocado * ENERGIA_POR_BOCADO * eficacia;
     return;
   }
 
@@ -658,6 +669,7 @@ function morder(estado: EstadoMundo, c: number, celda: number, base: number): vo
     if (bocado > 0) {
       estado.criaturaMateria[c] = estado.criaturaMateria[c]! + bocado;
       estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! + bocado * ENERGIA_POR_BOCADO * eficacia;
+    estado.energiaComidaEsteTick += bocado * ENERGIA_POR_BOCADO * eficacia;
       return;
     }
   }
@@ -672,6 +684,7 @@ function morder(estado: EstadoMundo, c: number, celda: number, base: number): vo
     estado.criaturaMateria[otro] = estado.criaturaMateria[otro]! - bocado;
     estado.criaturaMateria[c] = estado.criaturaMateria[c]! + bocado;
     estado.criaturaEnergia[c] = estado.criaturaEnergia[c]! + bocado * ENERGIA_POR_BOCADO * eficacia;
+    estado.energiaComidaEsteTick += bocado * ENERGIA_POR_BOCADO * eficacia;
     break;
   }
 }

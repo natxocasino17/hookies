@@ -830,8 +830,27 @@ export const ERRATA_POR_DIEZ_MIL = 9;
 /** Energía que consume por tick un cuerpo de tamaño medio sin hacer nada. */
 export const METABOLISMO_BASE = 0.30;
 
-/** Cuánta energía extra cuesta moverse una celda. */
-export const COSTE_DE_MOVERSE = 1.4;
+/**
+ * Cuánta energía extra cuesta moverse una celda.
+ *
+ * Estaba en 1,4, que con un cuerpo de tamaño medio son 2,1 por paso — **más de
+ * lo que se come en un tick entero**, que anda por 1,55. Con esos números
+ * moverse no puede compensar nunca, y eso no es un detalle de afinado: quiere
+ * decir que **buscar comida es ruinoso por construcción**, así que ningún
+ * cerebro puede aprender a buscarla por listo que sea.
+ *
+ * No se vio hasta la fase 4 porque los dados se mueven un 35 % fijo pasara lo
+ * que pasara, y el mundo quedó equilibrado alrededor de esa cifra. En cuanto
+ * hubo cuerpos que podían moverse más o menos, salió: el mismo cerebro con los
+ * ojos tapados hacía un pico de 32 criaturas y viéndolo todo hacía 7, porque
+ * ver le hacía moverse el 51 % del tiempo en vez del 22 %. Tener información
+ * era activamente malo.
+ *
+ * Ahora un paso cuesta unos 0,68 con un cuerpo medio: menos de la mitad de lo
+ * que se come en un tick. Moverse puede salir a cuenta si se va hacia algún
+ * sitio, que es lo que hace falta para que la información valga algo.
+ */
+export const COSTE_DE_MOVERSE = 0.45;
 
 /** Cuánta energía cuesta morder. */
 export const COSTE_DE_MORDER = 0.8;
@@ -1113,6 +1132,25 @@ export const COSTE_DE_RASCAR_A_FONDO = 0.5;
  * vida tiene que ser lento y acumulativo, no un volantazo por tick.
  */
 export const APRENDIZAJE_POR_DIEZ_MIL = 12;
+
+/**
+ * Cuánto tiembla cada salida del cerebro antes de convertirse en acto.
+ *
+ * **Esto no es un parche, es una pieza que le faltaba a la regla de
+ * aprendizaje.** Premiar lo que estabas haciendo solo enseña algo si a veces
+ * haces cosas distintas: un cerebro que hace siempre lo mismo no tiene con qué
+ * comparar, y por muchas vueltas que dé no puede aprender nada. El temblor es lo
+ * que prueba cosas, y la recompensa dice cuáles valían la pena.
+ *
+ * Y hace una segunda cosa igual de importante: un cerebro cuyo genoma diga "no
+ * morder nunca" se muere seguro, mientras que los dados nunca fallan del todo
+ * porque lo prueban todo. Con temblor, hasta el cerebro peor escrito muerde de
+ * vez en cuando y tiene una oportunidad de que la selección lo mejore.
+ *
+ * Las neuronas de verdad son ruidosas. Esta es una de esas veces en que lo que
+ * hacía falta para que funcionara resultó ser lo que además era cierto.
+ */
+export const TEMBLOR_DE_LA_SALIDA = 0.35;
 
 /**
  * Cuánto pesa lo de antes en la idea que un cuerpo tiene de "lo normal", por mil.
